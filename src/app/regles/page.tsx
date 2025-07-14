@@ -3,22 +3,19 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 const pointSystem = [
-    { placement: "1ère place", points: 20, color: "text-yellow-400" },
-    { placement: "2ème place", points: 16, color: "text-gray-300" },
-    { placement: "3ème place", points: 13, color: "text-orange-400" },
-    { placement: "4ème place", points: 10, color: "text-blue-400" },
-    { placement: "5ème place", points: 8, color: "text-blue-400" },
-    { placement: "6ème place", points: 6, color: "text-blue-400" },
-    { placement: "7ème place", points: 4, color: "text-blue-400" },
-    { placement: "8ème place", points: 2, color: "text-blue-400" },
-    { placement: "9ème place", points: 1, color: "text-blue-400" },
-    { placement: "10ème+ place", points: 0, color: "text-gray-500" },
+    { placement: "Top 1", points: 25, color: "text-yellow-400" },
+    { placement: "Top 2", points: 20, color: "text-gray-300" },
+    { placement: "Top 3", points: 17, color: "text-orange-400" },
+    { placement: "Top 4", points: 15, color: "text-blue-400" },
+    { placement: "Top 5-10", points: 12, color: "text-blue-400" },
+    { placement: "Top 11-20", points: 10, color: "text-blue-400" },
+    { placement: "Top 21-30", points: 8, color: "text-blue-400" },
+    { placement: "Top 31-40", points: 5, color: "text-blue-400" },
+    { placement: "Top 41-50", points: 3, color: "text-blue-400" },
 ];
 
 const killPoints = [
-    { kills: "1-3 kills", points: "+1 point par kill" },
-    { kills: "4-6 kills", points: "+2 points par kill" },
-    { kills: "7+ kills", points: "+3 points par kill" },
+    { kills: "1 kill", points: "10pts par kill" },
 ];
 
 export default function ReglesPage() {
@@ -127,7 +124,8 @@ export default function ReglesPage() {
                                     <li>• Chaque équipe doit avoir un capitaine qui effectue l&apos;inscription</li>
                                     <li>• <strong className="text-yellow-400">Équipes de 4 joueurs fixes obligatoires</strong></li>
                                     <li>• Si l&apos;équipe est incomplète, un code unique est généré pour permettre à d&apos;autres joueurs de rejoindre</li>
-                                    <li>• Les équipes incomplètes ont 7 jours pour se compléter après création</li>
+                                    <li>• Si la limite des 50 équipes sont atteintes avant la fin des inscriptions, les inscriptions seront encore possible si des équipes sont rejetées</li>
+                                    {/* <li>• Les équipes incomplètes ont 7 jours pour se compléter après création</li> */}
                                 </ul>
                                 <div className="mt-4 p-3 bg-red-900/30 rounded-lg border border-red-600">
                                     <p className="text-red-300 text-sm">
@@ -142,6 +140,8 @@ export default function ReglesPage() {
                                     <li>• La vidéo doit montrer clairement l&apos;écran de jeu et les paramètres</li>
                                     <li>• Validation manuelle par les administrateurs</li>
                                     <li>• Une équipe est validée si au moins 3 joueurs sont validés</li>
+                                    <li>• Si une équipe a au moins 3 joueurs rejetés, elle est automatiquement rejetée</li>
+                                    <li>• Si une équipe a moins de 3 joueurs validés, elle est automatiquement rejetée</li>
                                 </ul>
                             </div>
                         </div>
@@ -205,7 +205,7 @@ export default function ReglesPage() {
                                         <h4 className="text-red-400 font-semibold mb-2">❌ Ce qui est interdit</h4>
                                         <ul className="space-y-1 text-red-100 text-sm">
                                             <li>• Rejoindre une équipe déjà complète (4/4)</li>
-                                            <li>• Utiliser un code expiré (7 jours)</li>
+                                            <li>• Rejoindre une équipe après le délai d&apos;inscription</li>
                                             <li>• Modifier l&apos;équipe après validation</li>
                                         </ul>
                                     </div>
@@ -213,7 +213,7 @@ export default function ReglesPage() {
                                     <div className="bg-yellow-900/30 rounded-lg p-4 border border-yellow-600">
                                         <h4 className="text-yellow-400 font-semibold mb-2">🕒 Délais à respecter</h4>
                                         <ul className="space-y-1 text-yellow-100 text-sm">
-                                            <li>• <strong>7 jours</strong> pour compléter une équipe</li>
+                                            <li>• <strong>24 juillet 2025 à 23h59</strong> pour compléter une équipe</li>
                                             <li>• Upload vidéo obligatoire lors de la jointure</li>
                                             <li>• Validation admin requise pour tous les joueurs</li>
                                         </ul>
@@ -263,7 +263,7 @@ export default function ReglesPage() {
                                 </div>
                                 <div className="mt-4 p-4 bg-blue-900/30 rounded-lg border border-blue-700">
                                     <p className="text-blue-300 text-sm">
-                                        <strong>Exemple :</strong> 3ème place (13 pts) + 8 kills (3+3+2 pts) = 21 points total
+                                        <strong>Exemple :</strong> 3ème place (17 pts) + 8 kills (10 pts x 8) = 97 points total
                                     </p>
                                 </div>
                             </div>
@@ -280,10 +280,11 @@ export default function ReglesPage() {
                             <div>
                                 <h3 className="text-lg font-semibold text-blue-400 mb-3">Paramètres autorisés</h3>
                                 <ul className="space-y-2 text-gray-300">
-                                    <li>• Configuration graphique libre</li>
-                                    <li>• Sensibilité libre</li>
+                                    <li>• Configuration graphique et sensibilité libres</li>
                                     <li>• HUD personnalisé autorisé</li>
                                     <li>• Tous les appareils compatibles</li>
+                                    <li>• <strong>Maps jouées : Isolated</strong> (à télécharger avant le tournoi)</li>
+                                    <li>• <strong>Classes autorisées :</strong> medic (médecin), defense (défenseur), ninja, trickers (escrocs). Une classe supplémentaire par équipe est autorisée uniquement pour l&apos;échange, pas pour jouer.</li>
                                 </ul>
                             </div>
                             <div>
@@ -294,7 +295,8 @@ export default function ReglesPage() {
                                     <li>• Mise en place des rooms et équipes</li>
                                     <li>• Contrôle préalable des participants</li>
                                     <li>• <strong>22h00 GMT</strong> : Lancement du tournoi</li>
-                                    <li>• Screenshot obligatoire en fin de partie</li>
+                                    <li>• 3 manches seront jouées</li>
+                                    <li>• Screenshot ou vidéo de fin de partie recommandé pour toute contestation</li>
                                 </ul>
                                 <div className="mt-3 p-3 bg-blue-900/30 rounded-lg border border-blue-600">
                                     <p className="text-blue-300 text-sm">
@@ -318,7 +320,12 @@ export default function ReglesPage() {
                                     <li>• Hack/Cheat de toute forme</li>
                                     <li>• Modification du jeu</li>
                                     <li>• Utilisation de bots</li>
-                                    <li>• Exploitation de bugs</li>
+                                    <li>• Exploitation de bugs ou glitchs (camoufler son hitbox, traverser les murs, etc.)</li>
+                                    <li>• Utilisation des armes interdites : Machine de guerre, Thumper, Purificateur, Annihilateur, shotguns auto/semi-auto (Jak-12, Echo…), armes à effet glitché/buggué (selon la Maj)</li>
+                                    <li>• Utilisation des classes/atouts interdits (toutes sauf medic, defense, ninja, trickers)</li>
+                                    <li>• Utilisation des véhicules interdits : Tank, Jackal, Overbike</li>
+                                    <li>• Team-up (alliance entre équipes)</li>
+                                    <li>• Stream-sniping (même en différé)</li>
                                 </ul>
                             </div>
                             <div>
@@ -328,6 +335,7 @@ export default function ReglesPage() {
                                     <li>• Insultes ou propos discriminatoires</li>
                                     <li>• Spam ou publicité</li>
                                     <li>• Non-respect des administrateurs</li>
+                                    <li>• Non-respect des règles spécifiques du tournoi Battle Royale CoD Mobile</li>
                                 </ul>
                             </div>
                         </div>
@@ -346,7 +354,7 @@ export default function ReglesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                             <div className="text-center p-4 bg-gray-700/50 rounded-lg">
-                                <div className="text-2xl font-bold text-blue-400 mb-2">20 juillet</div>
+                                <div className="text-2xl font-bold text-blue-400 mb-2">24 juillet</div>
                                 <div className="text-gray-300">Fin des inscriptions</div>
                             </div>
                             <div className="text-center p-4 bg-gray-700/50 rounded-lg">

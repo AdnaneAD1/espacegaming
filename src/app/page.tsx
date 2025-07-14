@@ -69,7 +69,7 @@ export default function Home() {
                       ))}
                     </div>
                     <p className="text-center text-gray-400 text-sm mt-4">
-                      Fin des inscriptions : <span className="text-white font-semibold">20 juillet 2025 à 23h59</span>
+                      Fin des inscriptions : <span className="text-white font-semibold">24 juillet 2025 à 23h59</span>
                     </p>
                   </>
                 ) : (
@@ -244,7 +244,7 @@ export default function Home() {
                   <li>• Une équipe doit avoir minimum 3 joueurs validés pour participer</li>
                   <li>• Chaque joueur doit uploader une vidéo de device check</li>
                   <li>• La validation des joueurs se fait manuellement par les administrateurs</li>
-                  <li>• Les inscriptions ferment le <strong>15 août 2025</strong></li>
+                  <li>• Les inscriptions ferment le <strong>24 juillet 2025</strong></li>
                 </ul>
               </div>
             </div>
@@ -287,7 +287,7 @@ export default function Home() {
               {
                 icon: Shield,
                 title: "Inscription",
-                description: "Jusqu'au 15 août 2025",
+                description: "Jusqu'au 24 juillet 2025",
                 color: "from-red-500 to-pink-500"
               }
             ].map((item, index) => {
