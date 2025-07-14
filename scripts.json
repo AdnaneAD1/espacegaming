@@ -1,0 +1,13 @@
+{
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "next lint",
+        "firebase:deploy": "firebase deploy --only firestore:rules",
+        "firebase:emulator": "firebase emulators:start",
+        "setup": "node scripts/setup.js",
+        "export:csv": "curl -o export.csv http://localhost:3000/api/admin/export?format=csv",
+        "export:json": "curl -o export.json http://localhost:3000/api/admin/export?format=json"
+    }
+}

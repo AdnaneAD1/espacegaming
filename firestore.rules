@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Règles pour la collection teams
+    match /teams/{teamId} {
+      // Lecture: accessible à tous pour le suivi public
+      allow read: if true;
+      
+      // Écriture: seulement lors de l'inscription (création) ou par un admin
+      allow create: if isValidTeamData() && 
+                       request.auth != null &&
+                       registrationIsOpen();
+      
+      // Mise à jour: seulement pour rejoindre une équipe ou par un admin
+      allow update: if (isJoiningTeam() || isAdmin()) &&
+                       registrationIsOpen();
+      
+      // Suppression: seulement par un admin
+      allow delete: if isAdmin();
+    }
+    
+    // Règles pour les paramètres du tournoi
+    match /settings/{settingId} {
+      // Lecture: accessible à tous
+      allow read: if true;
+      
+      // Écriture: seulement par un admin
+      allow write: if isAdmin();
+    }
+    
+    // Règles pour la collection admins
+    match /admins/{adminId} {
+      // Lecture: seulement par l'admin lui-même
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      
+      // Écriture: interdite (gérée côté serveur)
+      allow write: if false;
+    }
+    
+    // Fonctions helper
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    function registrationIsOpen() {
+      return get(/databases/$(database)/documents/settings/tournament).data.registrationOpen == true;
+    }
+    
+    function isValidTeamData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['name', 'code', 'captain', 'players', 'status', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.code is string && data.code.size() == 6 &&
+             data.players is list && data.players.size() <= 4 &&
+             data.status in ['incomplete', 'complete', 'validated', 'rejected'] &&
+             isValidPlayer(data.captain) &&
+             data.players.hasAll([data.captain]);
+    }
+    
+    function isValidPlayer(player) {
+      return player.keys().hasAll(['id', 'pseudo', 'country', 'whatsapp', 'status', 'joinedAt']) &&
+             player.pseudo is string && player.pseudo.size() > 0 &&
+             player.country is string && player.country.size() > 0 &&
+             player.whatsapp is string && player.whatsapp.size() > 0 &&
+             player.status in ['pending', 'validated', 'rejected'];
+    }
+    
+    function isJoiningTeam() {
+      let oldData = resource.data;
+      let newData = request.resource.data;
+      
+      // Vérifier que seuls les joueurs sont ajoutés (pas de modification des autres champs)
+      return oldData.diff(newData).affectedKeys().hasOnly(['players', 'updatedAt', 'status']) &&
+             newData.players.size() > oldData.players.size() &&
+             newData.players.size() <= 4;
+    }
+  }
+}
