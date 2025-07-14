@@ -33,6 +33,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="scroll-smooth">
+      <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+      </head>
       <body className={`${inter.variable} font-sans antialiased bg-gray-900 text-white min-h-screen`}>
         {children}
         <NotificationPermission />
