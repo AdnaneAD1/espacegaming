@@ -410,6 +410,13 @@ const StatCard = ({ icon: Icon, title, value, color }: {
                                         <span className="hidden sm:inline">Exporter </span>CSV
                                     </button>
                                     <button
+                                        onClick={() => window.open('/api/admin/export?format=pdf', '_blank')}
+                                        className="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm sm:text-base"
+                                    >
+                                        <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                                        <span className="hidden sm:inline">Exporter </span>PDF (validés)
+                                    </button>
+                                    <button
                                         onClick={() => window.open('/api/admin/export?format=json', '_blank')}
                                         className="flex items-center justify-center px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm sm:text-base"
                                     >

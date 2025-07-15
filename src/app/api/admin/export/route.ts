@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { Team } from '@/types'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
 // Ajoute le type Firestore Timestamp si disponible
 import type { Timestamp } from 'firebase/firestore';
@@ -26,6 +27,83 @@ export async function GET(request: NextRequest) {
             id: doc.id,
             ...doc.data()
         })) as Team[]
+
+        if (format === 'pdf') {
+            // Filtrer uniquement les équipes validées
+            const validatedTeams = teams.filter(team => team.status === 'validated')
+
+            const pdfDoc = await PDFDocument.create()
+            const page = pdfDoc.addPage([800, Math.max(1120, 200 + validatedTeams.length * 120)])
+            const { height } = page.getSize()
+
+            // Fonts
+            const fontTitle = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+            const fontText = await pdfDoc.embedFont(StandardFonts.Helvetica)
+
+            let y = height - 60
+            page.drawText('Liste des équipes validées - Tournoi CODM', {
+                x: 40,
+                y,
+                size: 24,
+                font: fontTitle,
+                color: rgb(0.2, 0.4, 0.8)
+            })
+            y -= 40
+
+            validatedTeams.forEach((team, idx) => {
+                y -= 20
+                page.drawText(`Équipe #${idx + 1} : ${team.name} (${team.code})`, {
+                    x: 40,
+                    y,
+                    size: 18,
+                    font: fontTitle,
+                    color: rgb(0.3, 0.8, 0.6)
+                })
+                y -= 18
+                page.drawText(`Statut : ${team.status} | Créée le : ${formatDate(team.createdAt)}`, {
+                    x: 60,
+                    y,
+                    size: 12,
+                    font: fontText,
+                    color: rgb(0.4, 0.4, 0.4)
+                })
+                y -= 16
+                // Capitaine
+                if (team.captain) {
+                    page.drawText(`Capitaine : ${team.captain.pseudo} (${team.captain.country}) | WhatsApp : ${team.captain.whatsapp} | Statut : ${team.captain.status} | Vidéo : ${team.captain.deviceCheckVideo ? 'Oui' : 'Non'} | Rejoint le : ${formatDate(team.captain.joinedAt)}`, {
+                        x: 60,
+                        y,
+                        size: 10,
+                        font: fontText,
+                        color: rgb(0.2, 0.2, 0.2)
+                    })
+                    y -= 14
+                }
+                // Joueurs
+                if (team.players && Array.isArray(team.players)) {
+                    team.players.forEach((player, pi) => {
+                        page.drawText(`Joueur ${pi + 1} : ${player.pseudo} (${player.country}) | WhatsApp : ${player.whatsapp} | Statut : ${player.status} | Vidéo : ${player.deviceCheckVideo ? 'Oui' : 'Non'} | Rejoint le : ${formatDate(player.joinedAt)}`, {
+                            x: 80,
+                            y,
+                            size: 10,
+                            font: fontText,
+                            color: rgb(0.2, 0.2, 0.2)
+                        })
+                        y -= 12
+                    })
+                }
+                y -= 10
+            })
+
+            const pdfBytes = await pdfDoc.save()
+            return new NextResponse(Buffer.from(pdfBytes), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/pdf',
+                    'Content-Disposition': 'attachment; filename="teams_validated.pdf"'
+                }
+            })
+        }
 
         if (format === 'csv') {
             // Générer CSV

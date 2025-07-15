@@ -45,15 +45,16 @@ function RejoindreEquipePageContent() {
     const prefilledCode = searchParams.get('code') || '';
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showDeviceCheckModal, setShowDeviceCheckModal] = useState(false);
     const [teamInfo, setTeamInfo] = useState<Team | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     interface UploadState {
-    isUploading?: boolean;
-    uploadedUrl?: string;
-    error?: string | null;
-}
+        isUploading?: boolean;
+        uploadedUrl?: string;
+        error?: string | null;
+    }
 
-const [uploadState, setUploadState] = useState<UploadState>({});
+    const [uploadState, setUploadState] = useState<UploadState>({});
     const { upload } = useCloudinaryUpload(); // Déplacer le hook ici
 
     const {
@@ -339,6 +340,18 @@ const [uploadState, setUploadState] = useState<UploadState>({});
                                 </div>
 
                                 <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                                        Vidéo device check *
+                                        <button
+                                            type="button"
+                                            aria-label="Aide device check"
+                                            className="text-blue-400 hover:text-blue-600 focus:outline-none"
+                                            onClick={() => setShowDeviceCheckModal(true)}
+                                            tabIndex={0}
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2" /><text x="10" y="15" textAnchor="middle" fontSize="13" fill="currentColor">?</text></svg>
+                                        </button>
+                                    </label>
                                     <VideoUpload
                                         onUpload={handleVideoUpload}
                                         isUploading={uploadState?.isUploading}
@@ -346,6 +359,34 @@ const [uploadState, setUploadState] = useState<UploadState>({});
                                         error={uploadState?.error ?? undefined}
                                         required
                                     />
+                                    {/* Modal d'aide device check */}
+                                    {showDeviceCheckModal && (
+                                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+                                            <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-8 relative">
+                                                <button
+                                                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+                                                    aria-label="Fermer le modal"
+                                                    onClick={() => setShowDeviceCheckModal(false)}
+                                                >
+                                                    &times;
+                                                </button>
+                                                <h2 className="text-xl font-bold text-blue-700 mb-4 flex items-center gap-2">
+                                                    <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#2563eb" strokeWidth="2" /><text x="10" y="15" textAnchor="middle" fontSize="13" fill="#2563eb">?</text></svg>
+                                                    Comment faire le device check ?
+                                                </h2>
+                                                <ol className="list-decimal pl-5 text-gray-800 space-y-2 mb-4">
+                                                    <li><b>Montre d&apos;abord les applications fréquemment utilisées</b> sur le téléphone avec lequel tu joues. <span className="text-blue-700 font-semibold">C&apos;est obligatoire !</span></li>
+                                                    <li>Pour <b>iOS</b> : Va dans <b>Réglages &gt; Général &gt; VPN et gestion de l’appareil</b> et montre qu’il n’y a pas de profils suspects.</li>
+                                                    <li>Pour <b>Android</b> : Ouvre le <b>gestionnaire de fichiers</b> et effectue une recherche avec des mots-clés comme <b>aimbot</b>, <b>wallhack</b>, <b>cheat</b>, <b>hack</b>, etc. Montre qu’aucun fichier ou appli suspect n’est présent.</li>
+                                                    <li>Ensuite, ouvre <b>l’application COD Mobile</b>.</li>
+                                                    <li><b>La vidéo doit être claire, continue, sans coupure ni montage.</b></li>
+                                                </ol>
+                                                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded mb-2 text-blue-800">
+                                                    <b>Conseil :</b> Insiste bien sur la partie applications utilisées et recherches de fichiers ! Si besoin, demande à un proche de filmer ton écran pour plus de clarté.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </section>
