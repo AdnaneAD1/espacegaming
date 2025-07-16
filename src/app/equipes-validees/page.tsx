@@ -129,7 +129,6 @@ export default function ValidatedTeamsPage() {
                                         </div>
                                         <div>
                                             <h3 className="text-xl font-bold text-white">{team.name}</h3>
-                                            <p className="text-blue-200 text-sm">Code: {team.code}</p>
                                         </div>
                                     </div>
                                     <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs font-semibold">
