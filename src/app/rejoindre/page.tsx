@@ -46,6 +46,8 @@ function RejoindreEquipePageContent() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDeviceCheckModal, setShowDeviceCheckModal] = useState(false);
+    const [showOtherPlayerCountry, setShowOtherPlayerCountry] = useState(false);
+    const [otherPlayerCountryValue, setOtherPlayerCountryValue] = useState('');
     const [teamInfo, setTeamInfo] = useState<Team | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     interface UploadState {
@@ -311,14 +313,30 @@ function RejoindreEquipePageContent() {
                                     <select
                                         {...register('player.country')}
                                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        onChange={e => {
+                                            setOtherPlayerCountryValue(e.target.value);
+                                            setValue('player.country', e.target.value);
+                                            setShowOtherPlayerCountry(e.target.value === 'Autre');
+                                        }}
+                                        value={watch('player.country')}
                                     >
                                         <option value="">Sélectionnez votre pays</option>
                                         {countries.map((country) => (
-                                            <option key={country} value={country}>
-                                                {country}
-                                            </option>
+                                            <option key={country} value={country}>{country}</option>
                                         ))}
                                     </select>
+                                    {showOtherPlayerCountry && (
+                                        <input
+                                            type="text"
+                                            className="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Entrez votre pays"
+                                            value={otherPlayerCountryValue}
+                                            onChange={e => {
+                                                setOtherPlayerCountryValue(e.target.value);
+                                                setValue('player.country', e.target.value);
+                                            }}
+                                        />
+                                    )}
                                     {errors.player?.country && (
                                         <p className="mt-1 text-sm text-red-400">{errors.player.country.message}</p>
                                     )}

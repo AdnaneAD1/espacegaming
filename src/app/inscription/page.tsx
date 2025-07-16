@@ -23,6 +23,10 @@ export default function InscriptionPage() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDeviceCheckModal, setShowDeviceCheckModal] = useState(false);
+    const [showOtherCaptainCountry, setShowOtherCaptainCountry] = useState(false);
+    const [otherCaptainCountryValue, setOtherCaptainCountryValue] = useState('');
+    const [otherPlayersCountry, setOtherPlayersCountry] = useState<{ [idx: number]: boolean }>({});
+    const [otherPlayersCountryValue, setOtherPlayersCountryValue] = useState<{ [idx: number]: string }>({});
     type UploadState = { isUploading?: boolean; uploadedUrl?: string; error?: string | null };
     type UploadStates = { [key: string]: UploadState };
     const [uploadStates, setUploadStates] = useState<UploadStates>({});
@@ -34,7 +38,7 @@ export default function InscriptionPage() {
         handleSubmit,
         formState: { errors },
         setValue,
-
+        watch
     } = useForm<TeamRegistrationFormData>({
         resolver: zodResolver(teamRegistrationSchema),
         defaultValues: {
@@ -256,14 +260,29 @@ export default function InscriptionPage() {
                                 <select
                                     {...register('captain.country')}
                                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    onChange={e => {
+                                        setValue('captain.country', e.target.value);
+                                        setShowOtherCaptainCountry(e.target.value === 'Autre');
+                                    }}
+                                    value={watch('captain.country')}
                                 >
                                     <option value="">Sélectionnez votre pays</option>
                                     {countries.map((country) => (
-                                        <option key={country} value={country}>
-                                            {country}
-                                        </option>
+                                        <option key={country} value={country}>{country}</option>
                                     ))}
                                 </select>
+                                {showOtherCaptainCountry && (
+                                    <input
+                                        type="text"
+                                        className="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Entrez votre pays"
+                                        value={otherCaptainCountryValue}
+                                        onChange={e => {
+                                            setOtherCaptainCountryValue(e.target.value);
+                                            setValue('captain.country', e.target.value);
+                                        }}
+                                    />
+                                )}
                                 {errors.captain?.country && (
                                     <p className="mt-1 text-sm text-red-400">{errors.captain.country.message}</p>
                                 )}
@@ -367,12 +386,29 @@ export default function InscriptionPage() {
                                     <select
                                         {...register(`players.${idx}.country` as const)}
                                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        onChange={e => {
+                                            setValue(`players.${idx}.country`, e.target.value);
+                                            setOtherPlayersCountry(prev => ({ ...prev, [idx]: e.target.value === 'Autre' }));
+                                        }}
+                                        value={watch(`players.${idx}.country`)}
                                     >
                                         <option value="">Sélectionnez le pays</option>
                                         {countries.map((country) => (
                                             <option key={country} value={country}>{country}</option>
                                         ))}
                                     </select>
+                                    {otherPlayersCountry[idx] && (
+                                        <input
+                                            type="text"
+                                            className="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Entrez le pays"
+                                            value={otherPlayersCountryValue[idx] || ''}
+                                            onChange={e => {
+                                                setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: e.target.value }));
+                                                setValue(`players.${idx}.country`, e.target.value);
+                                            }}
+                                        />
+                                    )}
                                     {errors.players?.[idx]?.country && (
                                         <p className="mt-1 text-sm text-red-400">{errors.players[idx]?.country?.message}</p>
                                     )}

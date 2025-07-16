@@ -109,6 +109,13 @@ export default function AdminDashboard() {
                         : player
                 )
 
+                // Mettre à jour aussi le statut du capitaine si c'est lui
+                let updatedCaptain = team.captain;
+                const validatedPlayer = updatedPlayers.find(p => p.id === playerId);
+                if (validatedPlayer?.isCaptain) {
+                    updatedCaptain = { ...team.captain, status: 'validated' as const };
+                }
+
                 // Recalculer le statut de l'équipe après validation
                 const validatedCount = updatedPlayers.filter(p => p.status === 'validated').length
                 const totalPlayers = updatedPlayers.length
@@ -125,6 +132,7 @@ export default function AdminDashboard() {
 
                 await updateDoc(teamRef, {
                     players: updatedPlayers,
+                    captain: updatedCaptain,
                     status: teamStatus,
                     updatedAt: new Date()
                 })

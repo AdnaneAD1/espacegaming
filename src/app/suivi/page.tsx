@@ -384,7 +384,6 @@ function SuiviPageContent() {
                             <div className="space-y-2 text-gray-300 text-sm">
                                 <p>• Une équipe est considérée comme valide avec au moins 3 joueurs validés</p>
                                 <p>• La validation des vidéos peut prendre jusqu&apos;à 48 heures</p>
-                                <p>• Les équipes validées recevront les informations de connexion au tournoi</p>
                                 <p>• En cas de refus, vous pouvez contacter les administrateurs pour plus d&apos;informations</p>
                             </div>
                         </div>

@@ -11,6 +11,7 @@ export interface Player {
     validatedAt?: Date;
     rejectedAt?: Date;
     rejectionReason?: string;
+    isCaptain?: boolean;
 }
 
 export interface Team {
