@@ -24,6 +24,7 @@ import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase
 import { db } from '@/lib/firebase'
 import { Team } from '@/types'
 import { ComponentType } from 'react';
+import { useRouter } from 'next/navigation'
 
 interface AdminStats {
     totalTeams: number
@@ -36,6 +37,7 @@ interface AdminStats {
 
 export default function AdminDashboard() {
     const { user, logout } = useAuth()
+    const router = useRouter()
     const [stats, setStats] = useState<AdminStats>({
         totalTeams: 0,
         validatedTeams: 0,
@@ -94,6 +96,9 @@ export default function AdminDashboard() {
         const result = await logout()
         if (result.success) {
             toast.success('Déconnexion réussie')
+            setTimeout(() => {
+                router.push('/')
+            }, 300); // Petit délai pour laisser le toast s'afficher et éviter les race conditions
         }
     }
 

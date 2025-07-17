@@ -470,7 +470,15 @@ function RejoindreEquipePageContent() {
 
 import { Suspense } from 'react';
 
+import InscriptionClosed from '@/components/InscriptionClosed';
+import { isRegistrationOpen } from '@/lib/utils';
+
 export default function RejoindreEquipePage() {
+    // Vérifie ouverture inscription côté client
+    if (!isRegistrationOpen()) {
+        return <InscriptionClosed />;
+    }
+
     return (
         <Suspense fallback={<div>Chargement...</div>}>
             <RejoindreEquipePageContent />

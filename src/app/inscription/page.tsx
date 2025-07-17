@@ -19,6 +19,9 @@ const countries = [
     'Cameroun', 'Gabon', 'République démocratique du Congo', 'Autre'
 ];
 
+import InscriptionClosed from '@/components/InscriptionClosed';
+import { isRegistrationOpen } from '@/lib/utils';
+
 export default function InscriptionPage() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,6 +186,11 @@ export default function InscriptionPage() {
             toast.error(errorMessage);
         }
     };
+
+    // Vérifie ouverture inscription côté client
+    if (!isRegistrationOpen()) {
+        return <InscriptionClosed />;
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
