@@ -128,7 +128,7 @@ export default function Home() {
                     </p>
                     
                     {/* Comptes TikTok */}
-                    <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                       <div className="text-center">
                         <h4 className="text-white font-semibold mb-3 flex items-center justify-center gap-2">
                           <Users className="w-5 h-5 text-pink-400" />
@@ -383,7 +383,7 @@ export default function Home() {
               {
                 icon: Calendar,
                 title: "Date du tournoi",
-                description: "26 juillet 2025 - 22h GMT",
+                description: "26 juillet 2025 - 22h",
                 color: "from-green-500 to-emerald-500"
               },
               {

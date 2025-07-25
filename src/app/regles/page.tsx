@@ -49,7 +49,7 @@ export default function ReglesPage() {
                             <h2 className="text-3xl font-bold text-white mb-4">🎮 Annonce Officielle du Tournoi 🎮</h2>
                             <p className="text-yellow-200 text-lg">
                                 Notre tournoi officiel de Call of Duty: Mobile se tiendra le
-                                <strong className="text-yellow-400"> samedi 26 juillet 2025 à 22h GMT</strong>
+                                <strong className="text-yellow-400"> samedi 26 juillet 2025 à 22h</strong>
                             </p>
                         </div>
 
@@ -67,8 +67,8 @@ export default function ReglesPage() {
                             <div className="bg-orange-900/30 rounded-lg p-4 border border-orange-600">
                                 <h3 className="text-lg font-bold text-orange-400 mb-3">⏰ Horaires cruciaux</h3>
                                 <ul className="space-y-2 text-orange-100 text-sm">
-                                    <li>• <strong>21h35 GMT</strong> : Connexion obligatoire</li>
-                                    <li>• <strong>22h00 GMT</strong> : Début du tournoi</li>
+                                    <li>• <strong>21h35</strong> : Connexion obligatoire</li>
+                                    <li>• <strong>22h00</strong> : Début du tournoi</li>
                                     <li>• Briefing et contrôle préalable</li>
                                     <li>• Mise en place des rooms</li>
                                 </ul>
@@ -290,11 +290,11 @@ export default function ReglesPage() {
                             <div>
                                 <h3 className="text-lg font-semibold text-blue-400 mb-3">Déroulement</h3>
                                 <ul className="space-y-2 text-gray-300">
-                                    <li>• <strong>21h35 GMT</strong> : Connexion obligatoire des participants</li>
+                                    <li>• <strong>21h35</strong> : Connexion obligatoire des participants</li>
                                     <li>• Briefing des règles et consignes techniques</li>
                                     <li>• Mise en place des rooms et équipes</li>
                                     <li>• Contrôle préalable des participants</li>
-                                    <li>• <strong>22h00 GMT</strong> : Lancement du tournoi</li>
+                                    <li>• <strong>22h00</strong> : Lancement du tournoi</li>
                                     <li>• 3 manches seront jouées</li>
                                     <li>• Screenshot ou vidéo de fin de partie recommandé pour toute contestation</li>
                                 </ul>
@@ -364,7 +364,7 @@ export default function ReglesPage() {
                             <div className="text-center p-4 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-lg border-2 border-yellow-400">
                                 <div className="text-2xl font-bold text-white mb-2">26 juillet</div>
                                 <div className="text-yellow-100 font-semibold">TOURNOI PRINCIPAL</div>
-                                <div className="text-yellow-200 text-sm mt-1">22h00 GMT</div>
+                                <div className="text-yellow-200 text-sm mt-1">22h00</div>
                             </div>
                         </div>
 
@@ -378,8 +378,8 @@ export default function ReglesPage() {
                                 <div>
                                     <h4 className="text-lg font-semibold text-blue-400 mb-3">Horaires</h4>
                                     <ul className="space-y-2 text-gray-300">
-                                        <li>• <strong className="text-yellow-400">21h35 GMT</strong> : Connexion recommandée</li>
-                                        <li>• <strong className="text-orange-400">22h00 GMT</strong> : Début du tournoi</li>
+                                        <li>• <strong className="text-yellow-400">21h35</strong> : Connexion recommandée</li>
+                                        <li>• <strong className="text-orange-400">22h00</strong> : Début du tournoi</li>
                                         <li>• <strong className="text-red-400">25 minutes avant</strong> : Obligatoire en ligne</li>
                                     </ul>
                                 </div>
@@ -395,7 +395,7 @@ export default function ReglesPage() {
                             </div>
                             <div className="mt-4 p-3 bg-yellow-900/30 rounded-lg border border-yellow-600">
                                 <p className="text-yellow-300 text-sm">
-                                    <strong>⚠️ Important :</strong> Tous les participants doivent être en ligne au plus tard à 21h35 GMT pour participer au tournoi.
+                                    <strong>⚠️ Important :</strong> Tous les participants doivent être en ligne au plus tard à 21h35 pour participer au tournoi.
                                 </p>
                             </div>
                         </div>
