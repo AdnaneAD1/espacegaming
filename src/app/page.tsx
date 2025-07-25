@@ -10,6 +10,7 @@ import { getTimeUntilRegistrationEnd, isRegistrationOpen } from '@/lib/utils';
 export default function Home() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isClient, setIsClient] = useState(false);
+  const [isResultsAvailable, setIsResultsAvailable] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -18,6 +19,25 @@ export default function Home() {
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  // Vérifier si les résultats sont disponibles
+  useEffect(() => {
+    const checkResultsAvailability = () => {
+      const revealDate = process.env.NEXT_PUBLIC_RESULTS_REVEAL_DATE;
+      if (!revealDate) {
+        setIsResultsAvailable(false);
+        return;
+      }
+
+      const now = new Date();
+      const targetDate = new Date(revealDate);
+      setIsResultsAvailable(now >= targetDate);
+    };
+
+    checkResultsAvailability();
+    const interval = setInterval(checkResultsAvailability, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const registrationOpen = isRegistrationOpen();
@@ -44,10 +64,32 @@ export default function Home() {
               Récompense de <span className="text-yellow-400 font-bold">4000 CP</span> par joueur gagnant !
             </p>
 
-            {/* Compteur */}
+            {/* Compteur ou Résultats */}
             {isClient && (
               <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-6 mb-8 max-w-2xl mx-auto border border-gray-700">
-                {registrationOpen ? (
+                {isResultsAvailable ? (
+                  /* Résultats disponibles */
+                  <>
+                    <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center justify-center gap-2">
+                      <Trophy className="w-6 h-6 text-yellow-400" />
+                      Résultats du Tournoi Disponibles !
+                    </h3>
+                    <p className="text-center text-gray-300 mb-6">
+                      Le tournoi est terminé ! Découvrez le classement final et félicitez les gagnants.
+                    </p>
+                    <div className="text-center">
+                      <Link
+                        href="/classement-final"
+                        className="inline-flex items-center gap-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                      >
+                        <Trophy className="w-6 h-6" />
+                        Voir le Classement Final
+                        <Award className="w-5 h-5" />
+                      </Link>
+                    </div>
+                  </>
+                ) : registrationOpen ? (
+                  /* Inscriptions ouvertes */
                   <>
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-center gap-2">
                       <Clock className="w-5 h-5 text-green-400" />
@@ -73,14 +115,74 @@ export default function Home() {
                     </p>
                   </>
                 ) : (
+                  /* Inscriptions fermées */
                   <>
                     <h3 className="text-lg font-semibold text-red-400 mb-4 flex items-center justify-center gap-2">
                       <Clock className="w-5 h-5" />
                       Inscriptions fermées
                     </h3>
-                    <p className="text-center text-gray-400">
+                    <p className="text-center text-gray-400 mb-6">
                       Les inscriptions pour ce tournoi sont maintenant fermées.
                       <br />
+                      <span className="text-white font-semibold">Le tournoi sera diffusé en direct sur :</span>
+                    </p>
+                    
+                    {/* Comptes TikTok */}
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <h4 className="text-white font-semibold mb-3 flex items-center justify-center gap-2">
+                          <Users className="w-5 h-5 text-pink-400" />
+                          Mister A YT
+                        </h4>
+                        <div className="flex justify-center">
+                          <blockquote 
+                            className="tiktok-embed" 
+                            cite="https://www.tiktok.com/@misteraytcodm" 
+                            data-unique-id="misteraytcodm" 
+                            data-embed-type="creator" 
+                            style={{maxWidth: '300px', minWidth: '288px'}}
+                          >
+                            <section>
+                              <a 
+                                target="_blank" 
+                                href="https://www.tiktok.com/@misteraytcodm?refer=creator_embed"
+                                className="text-pink-400 hover:text-pink-300 transition-colors"
+                              >
+                                @misteraytcodm
+                              </a>
+                            </section>
+                          </blockquote>
+                        </div>
+                      </div>
+                      
+                      <div className="text-center">
+                        <h4 className="text-white font-semibold mb-3 flex items-center justify-center gap-2">
+                          <Users className="w-5 h-5 text-pink-400" />
+                          Adoooooo
+                        </h4>
+                        <div className="flex justify-center">
+                          <blockquote 
+                            className="tiktok-embed" 
+                            cite="https://www.tiktok.com/@goatcoincoin" 
+                            data-unique-id="goatcoincoin" 
+                            data-embed-type="creator" 
+                            style={{maxWidth: '300px', minWidth: '288px'}}
+                          >
+                            <section>
+                              <a 
+                                target="_blank" 
+                                href="https://www.tiktok.com/@goatcoincoin?refer=creator_embed"
+                                className="text-pink-400 hover:text-pink-300 transition-colors"
+                              >
+                                @goatcoincoin
+                              </a>
+                            </section>
+                          </blockquote>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <p className="text-center text-gray-400 text-sm mt-6">
                       <span className="text-white">Suivez-nous pour les prochains tournois !</span>
                     </p>
                   </>

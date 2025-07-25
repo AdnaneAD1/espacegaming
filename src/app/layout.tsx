@@ -35,6 +35,7 @@ export default function RootLayout({
     <html lang="fr" className="scroll-smooth">
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <script async src="https://www.tiktok.com/embed.js"></script>
       </head>
       <body className={`${inter.variable} font-sans antialiased bg-gray-900 text-white min-h-screen`}>
         {children}

@@ -17,7 +17,8 @@ import {
     AlertTriangle,
     Trash2,
     X,
-    Crown
+    Crown,
+    Trophy
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore'
@@ -25,6 +26,7 @@ import { db } from '@/lib/firebase'
 import { Team } from '@/types'
 import { ComponentType } from 'react';
 import { useRouter } from 'next/navigation'
+import TournamentManager from '@/components/admin/TournamentManager'
 
 interface AdminStats {
     totalTeams: number
@@ -47,7 +49,7 @@ export default function AdminDashboard() {
         pendingPlayers: 0
     })
     const [teams, setTeams] = useState<Team[]>([])
-    const [selectedTab, setSelectedTab] = useState<'dashboard' | 'teams' | 'players' | 'settings'>('dashboard')
+    const [selectedTab, setSelectedTab] = useState<'dashboard' | 'teams' | 'players' | 'tournament' | 'settings'>('dashboard')
     const [loading, setLoading] = useState(true)
     const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
     const [showTeamDetails, setShowTeamDetails] = useState(false)
@@ -327,11 +329,12 @@ const StatCard = ({ icon: Icon, title, value, color }: {
                                 { id: 'dashboard', label: 'Tableau de bord', icon: Users },
                                 { id: 'teams', label: 'Équipes', icon: Users },
                                 { id: 'players', label: 'Joueurs', icon: UserCheck },
+                                { id: 'tournament', label: 'Tournoi', icon: Trophy },
                                 { id: 'settings', label: 'Paramètres', icon: Settings }
                             ].map(({ id, label, icon: Icon }) => (
                                 <button
                                     key={id}
-                                    onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'settings')}
+                                    onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'tournament' | 'settings')}
                                     className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${selectedTab === id
                                         ? 'bg-blue-100 text-blue-700'
                                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -351,11 +354,12 @@ const StatCard = ({ icon: Icon, title, value, color }: {
                                     { id: 'dashboard', label: 'Tableau', shortLabel: 'Stats', icon: Users },
                                     { id: 'teams', label: 'Équipes', shortLabel: 'Teams', icon: Users },
                                     { id: 'players', label: 'Joueurs', shortLabel: 'Players', icon: UserCheck },
+                                    { id: 'tournament', label: 'Tournoi', shortLabel: 'Tournoi', icon: Trophy },
                                     { id: 'settings', label: 'Paramètres', shortLabel: 'Config', icon: Settings }
                                 ].map(({ id, label, shortLabel, icon: Icon }) => (
                                     <button
                                         key={id}
-                                        onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'settings')}
+                                        onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'tournament' | 'settings')}
                                         className={`flex flex-col items-center justify-center p-3 text-xs font-medium rounded-lg transition-colors ${selectedTab === id
                                             ? 'bg-blue-100 text-blue-700'
                                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -803,6 +807,11 @@ const StatCard = ({ icon: Icon, title, value, color }: {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {/* Tournoi */}
+                    {selectedTab === 'tournament' && (
+                        <TournamentManager teams={teams} />
                     )}
 
                     {/* Paramètres */}
