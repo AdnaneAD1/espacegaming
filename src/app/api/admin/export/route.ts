@@ -38,83 +38,158 @@ export async function GET(request: NextRequest) {
 
             const pdfDoc = await PDFDocument.create();
             pdfDoc.registerFontkit(fontkit);
-            const page = pdfDoc.addPage([800, Math.max(1120, 200 + validatedTeams.length * 120)]);
-            const { height } = page.getSize();
+            
+            // Constantes pour la gestion des pages
+            const PAGE_WIDTH = 800;
+            const PAGE_HEIGHT = 1120;
+            const MARGIN_TOP = 60;
+            const MARGIN_BOTTOM = 80;
+            const HEADER_HEIGHT = 48;
+            
+            let currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+            let currentY = PAGE_HEIGHT - MARGIN_TOP;
+            let pageCount = 1;
 
             // Police Unicode (Noto Sans)
             const fontPath = path.join(process.cwd(), 'public', 'fonts', 'Symbola.ttf');
             const fontBytes = fs.readFileSync(fontPath);
             const customFont = await pdfDoc.embedFont(fontBytes);
 
-            let y = height - 60;
-            // Bandeau titre sobre (en image)
+            // Fonction pour ajouter une nouvelle page
+            const addNewPage = async () => {
+                currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+                currentY = PAGE_HEIGHT - MARGIN_TOP;
+                pageCount++;
+                
+                // Ajouter le titre sur chaque nouvelle page
+                const pngBuffer = textToPngBuffer('Tournoi Battle Royale CODM — Liste des équipes validées', 28, 'Noto Sans', '#181c2c', 700, 48);
+                const pngImage = await pdfDoc.embedPng(pngBuffer);
+                currentPage.drawImage(pngImage, { x: 60, y: currentY - 10, width: 700, height: 48 });
+                currentY -= HEADER_HEIGHT + 20;
+                
+                // Numéro de page
+                currentPage.drawText(`Page ${pageCount}`, {
+                    x: PAGE_WIDTH - 100,
+                    y: 30,
+                    size: 10,
+                    font: customFont,
+                    color: rgb(0.5, 0.5, 0.5)
+                });
+            };
+
+            // Fonction pour vérifier si on a assez d'espace pour une équipe
+            const checkSpaceForTeam = async (team: Team) => {
+                const playersCount = team.players?.length || 0;
+                const teamHeight = 36 + 12 + 20 + 22 + (playersCount * 18) + 20; // Estimation de la hauteur nécessaire
+                
+                if (currentY - teamHeight < MARGIN_BOTTOM) {
+                    await addNewPage();
+                }
+            };
+
+            // Bandeau titre sur la première page
             {
                 const pngBuffer = textToPngBuffer('Tournoi Battle Royale CODM — Liste des équipes validées', 28, 'Noto Sans', '#181c2c', 700, 48);
                 const pngImage = await pdfDoc.embedPng(pngBuffer);
-                page.drawImage(pngImage, { x: 60, y: y-10, width: 700, height: 48 });
+                currentPage.drawImage(pngImage, { x: 60, y: currentY - 10, width: 700, height: 48 });
             }
-            y -= 48;
+            currentY -= HEADER_HEIGHT + 20;
 
+            // Numéro de page sur la première page
+            currentPage.drawText(`Page 1`, {
+                x: PAGE_WIDTH - 100,
+                y: 30,
+                size: 10,
+                font: customFont,
+                color: rgb(0.5, 0.5, 0.5)
+            });
 
             for (let idx = 0; idx < validatedTeams.length; idx++) {
                 const team = validatedTeams[idx];
+                
+                // Vérifier si on a assez d'espace pour cette équipe
+                await checkSpaceForTeam(team);
+                
+                // Calculer la hauteur du bloc équipe
+                const playersCount = team.players?.filter(p => 
+                    !(team.captain && p.pseudo === team.captain.pseudo && p.country === team.captain.country)
+                ).length || 0;
+                const blockHeight = 36 + 12 + 20 + (team.captain ? 22 : 0) + (playersCount * 18) + 20;
+                
                 // Fond très léger sous chaque équipe
-                const blockHeight = 38 + (team.players?.length || 0) * 12 + 13 + 20;
-                page.drawRectangle({ x: 52, y: y - blockHeight + 8, width: 370, height: blockHeight, color: rgb(0.93,0.97,1), opacity: 0.7 });
-                // Titre équipe bleu clair
+                currentPage.drawRectangle({ 
+                    x: 52, 
+                    y: currentY - blockHeight + 8, 
+                    width: 370, 
+                    height: blockHeight, 
+                    color: rgb(0.93, 0.97, 1), 
+                    opacity: 0.7 
+                });
+                
                 // Titre équipe (en image)
                 {
                     const pngBuffer = textToPngBuffer(`ÉQUIPE #${idx + 1} : ${team.name}`, 21, 'Noto Sans', '#2266b2', 540, 36);
                     const pngImage = await pdfDoc.embedPng(pngBuffer);
-                    page.drawImage(pngImage, { x: 60, y: y-3, width: 540, height: 36 });
+                    currentPage.drawImage(pngImage, { x: 60, y: currentY - 3, width: 540, height: 36 });
                 }
-                y -= 36;
+                currentY -= 36;
+                
                 // Ligne colorée
-                // Ligne colorée (on garde en vectoriel)
-                page.drawLine({ start: { x: 60, y: y }, end: { x: 400, y: y }, thickness: 1.2, color: rgb(0.13,0.36,0.7) });
-                y -= 12;
-                // Statut/date gris-bleu
+                currentPage.drawLine({ 
+                    start: { x: 60, y: currentY }, 
+                    end: { x: 400, y: currentY }, 
+                    thickness: 1.2, 
+                    color: rgb(0.13, 0.36, 0.7) 
+                });
+                currentY -= 12;
+                
                 // Statut (en image)
                 {
                     const pngBuffer = textToPngBuffer('Statut : Validée', 14, 'Noto Sans', '#395478', 200, 20);
                     const pngImage = await pdfDoc.embedPng(pngBuffer);
-                    page.drawImage(pngImage, { x: 72, y: y-2, width: 200, height: 20 });
+                    currentPage.drawImage(pngImage, { x: 72, y: currentY - 2, width: 200, height: 20 });
                 }
-                y -= 20;
-                // Liste des membres (capitaine en premier)
+                currentY -= 20;
+                
+                // Capitaine
                 if (team.captain) {
-                    // Capitaine (en image)
-                    {
-                        const pngBuffer = textToPngBuffer(`★ ${team.captain.pseudo}  (${team.captain.country})`, 16, 'Noto Sans', '#13807a', 420, 22);
-                        const pngImage = await pdfDoc.embedPng(pngBuffer);
-                        page.drawImage(pngImage, { x: 82, y: y-2, width: 420, height: 22 });
-                    }
-                    y -= 22;
+                    const pngBuffer = textToPngBuffer(`★ ${team.captain.pseudo}  (${team.captain.country})`, 16, 'Noto Sans', '#13807a', 420, 22);
+                    const pngImage = await pdfDoc.embedPng(pngBuffer);
+                    currentPage.drawImage(pngImage, { x: 82, y: currentY - 2, width: 420, height: 22 });
+                    currentY -= 22;
                 }
+                
+                // Joueurs
                 if (team.players && Array.isArray(team.players)) {
                     for (const player of team.players) {
-                        // Ne pas dupliquer le capitaine dans la liste joueurs
+                        // Ne pas dupliquer le capitaine
                         if (team.captain && player.pseudo === team.captain.pseudo && player.country === team.captain.country) continue;
-                        // Joueur (en image)
-                        {
-                            const pngBuffer = textToPngBuffer(`• ${player.pseudo} (${player.country})`, 13, 'Noto Sans', '#2e3550', 400, 18);
-                            const pngImage = await pdfDoc.embedPng(pngBuffer);
-                            page.drawImage(pngImage, { x: 88, y: y-1, width: 400, height: 18 });
-                        }
-                        y -= 18;
+                        
+                        const pngBuffer = textToPngBuffer(`• ${player.pseudo} (${player.country})`, 13, 'Noto Sans', '#2e3550', 400, 18);
+                        const pngImage = await pdfDoc.embedPng(pngBuffer);
+                        currentPage.drawImage(pngImage, { x: 88, y: currentY - 1, width: 400, height: 18 });
+                        currentY -= 18;
                     }
                 }
-                y -= 20;
+                currentY -= 20;
             }
 
-            // Pied de page sobre et centré
-            page.drawLine({ start: { x: 250, y: 40 }, end: { x: 550, y: 40 }, thickness: 0.8, color: rgb(0.7,0.7,0.7) });
-            page.drawText(`Exporté le : ${formatDate(new Date())}   —   EspaceGaming`, {
-                x: 300,
-                y: 22,
-                size: 10,
-                font: customFont,
-                color: rgb(0.4, 0.4, 0.4)
+            // Ajouter le pied de page sur toutes les pages
+            const pages = pdfDoc.getPages();
+            pages.forEach((page) => {
+                page.drawLine({ 
+                    start: { x: 250, y: 40 }, 
+                    end: { x: 550, y: 40 }, 
+                    thickness: 0.8, 
+                    color: rgb(0.7, 0.7, 0.7) 
+                });
+                page.drawText(`Exporté le : ${formatDate(new Date())}   —   EspaceGaming`, {
+                    x: 300,
+                    y: 22,
+                    size: 10,
+                    font: customFont,
+                    color: rgb(0.4, 0.4, 0.4)
+                });
             });
 
             const pdfBytes = await pdfDoc.save()

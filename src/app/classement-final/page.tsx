@@ -220,51 +220,277 @@ export default function ClassementFinal() {
 
         {/* Podium Top 3 */}
         {rankings.length > 0 && (
-          <div className="mb-12">
-            <h2 className="text-3xl font-bold text-white text-center mb-8">🏆 Podium</h2>
-            <div className="flex justify-center items-end space-x-4 mb-8">
-              {/* 2ème place */}
-              {rankings[1] && (
-                <div className="text-center">
-                  <div className="bg-gradient-to-r from-gray-300 to-gray-500 rounded-xl p-6 mb-4 transform hover:scale-105 transition-transform">
-                    <Medal className="w-12 h-12 text-white mx-auto mb-2" />
-                    <h3 className="text-xl font-bold text-white mb-2">{rankings[1].teamName}</h3>
-                    <p className="text-3xl font-bold text-white">{rankings[1].totalPoints}</p>
-                    <p className="text-white/80 text-sm">points</p>
-                  </div>
-                  <div className="bg-gray-400 h-24 w-32 rounded-t-lg flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white">2</span>
-                  </div>
-                </div>
-              )}
+          <div className="mb-16">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-bold text-white mb-4 flex items-center justify-center space-x-3">
+                <Trophy className="w-10 h-10 text-yellow-400 animate-pulse" />
+                <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
+                  PODIUM DES CHAMPIONS
+                </span>
+                <Trophy className="w-10 h-10 text-yellow-400 animate-pulse" />
+              </h2>
+              <div className="w-32 h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 mx-auto rounded-full"></div>
+            </div>
 
-              {/* 1ère place */}
-              <div className="text-center">
-                <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-xl p-8 mb-4 transform hover:scale-105 transition-transform">
-                  <Crown className="w-16 h-16 text-white mx-auto mb-2" />
-                  <h3 className="text-2xl font-bold text-white mb-2">{rankings[0].teamName}</h3>
-                  <p className="text-4xl font-bold text-white">{rankings[0].totalPoints}</p>
-                  <p className="text-white/80">points</p>
+            {/* Podium avec perspective 3D */}
+            <div className="relative max-w-5xl mx-auto">
+              {/* Effets de particules améliorés en arrière-plan */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {/* Particules principales */}
+                <div className="absolute top-10 left-10 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-75"></div>
+                <div className="absolute top-20 right-20 w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <div className="absolute bottom-20 left-20 w-2.5 h-2.5 bg-purple-400 rounded-full animate-bounce"></div>
+                <div className="absolute bottom-10 right-10 w-3 h-3 bg-green-400 rounded-full animate-ping opacity-50"></div>
+                
+                {/* Particules secondaires */}
+                <div className="absolute top-32 left-32 w-1 h-1 bg-pink-400 rounded-full animate-pulse opacity-60" style={{animationDelay: '1s'}}></div>
+                <div className="absolute top-40 right-40 w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce opacity-70" style={{animationDelay: '1.5s'}}></div>
+                <div className="absolute bottom-32 left-40 w-1 h-1 bg-orange-400 rounded-full animate-ping opacity-50" style={{animationDelay: '2s'}}></div>
+                <div className="absolute bottom-40 right-32 w-1.5 h-1.5 bg-lime-400 rounded-full animate-pulse opacity-60" style={{animationDelay: '0.5s'}}></div>
+                
+                {/* Rayons de lumière */}
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-20 bg-gradient-to-b from-yellow-400/30 to-transparent animate-pulse"></div>
+                <div className="absolute top-0 left-1/4 transform -translate-x-1/2 w-0.5 h-16 bg-gradient-to-b from-blue-400/20 to-transparent animate-pulse" style={{animationDelay: '1s'}}></div>
+                <div className="absolute top-0 right-1/4 transform translate-x-1/2 w-0.5 h-16 bg-gradient-to-b from-purple-400/20 to-transparent animate-pulse" style={{animationDelay: '2s'}}></div>
+              </div>
+              
+              {/* Effet de sol réfléchissant */}
+              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white/5 to-transparent rounded-full blur-2xl"></div>
+
+              <div className="flex justify-center items-end space-x-2 sm:space-x-6 lg:space-x-8">
+                {/* 2ème place */}
+                {rankings[1] && (
+                  <div className="text-center transform hover:scale-110 transition-all duration-700 hover:-translate-y-4 group">
+                    {/* Confettis argent pour le 2ème */}
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                        <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      </div>
+                    </div>
+                    
+                    {/* Carte équipe 2ème */}
+                    <div className="relative mb-6 group/card">
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-400 to-slate-600 rounded-2xl blur-xl opacity-50 group-hover:opacity-90 transition-all duration-500 group-hover:scale-110"></div>
+                      <div className="relative bg-gradient-to-br from-slate-300 via-slate-400 to-slate-600 rounded-2xl p-6 border-2 border-slate-300 transition-all duration-500">
+                        {/* Badge médaille flottant */}
+                        <div className="absolute -top-4 -right-4 bg-gradient-to-br from-slate-200 to-slate-400 rounded-full p-3 animate-pulse group-hover:animate-bounce">
+                          <Medal className="w-7 h-7 text-slate-700" />
+                        </div>
+                        
+
+                        
+                        <div className="text-center relative z-10">
+                          <div className="bg-white/30 rounded-full p-4 w-18 h-18 mx-auto mb-4 flex items-center justify-center group-hover:bg-white/40 transition-colors">
+                            <Medal className="w-10 h-10 text-white" />
+                          </div>
+                          <h3 className="text-lg sm:text-xl font-black text-white mb-3 truncate group-hover:scale-105 transition-transform">{rankings[1].teamName}</h3>
+                          <div className="bg-white/30 rounded-xl p-3 mb-3 group-hover:bg-white/40 transition-colors">
+                            <p className="text-2xl sm:text-3xl font-black text-white">{rankings[1].totalPoints}</p>
+                            <p className="text-white/95 text-xs font-bold tracking-wider">POINTS</p>
+                          </div>
+                          <div className="flex justify-center space-x-2 text-xs">
+                            <span className="bg-red-500/90 px-3 py-1.5 rounded-lg text-white font-bold hover:bg-red-400 transition-colors">{rankings[1].totalKills} K</span>
+                            <span className="bg-blue-500/90 px-3 py-1.5 rounded-lg text-white font-bold hover:bg-blue-400 transition-colors">{rankings[1].gamesPlayed} G</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Socle 2ème amélioré */}
+                    <div className="relative">
+                      <div className="bg-gradient-to-t from-slate-700 via-slate-500 to-slate-400 h-20 sm:h-24 w-26 sm:w-32 lg:w-36 rounded-t-3xl mx-auto border-3 border-slate-300 flex items-center justify-center relative overflow-hidden transition-all duration-500">
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-600/50 to-transparent"></div>
+                        {/* Étoiles tournantes autour du socle */}
+                        <div className="absolute -top-2 -left-2 w-3 h-3 bg-slate-300 rounded-full animate-spin opacity-75" style={{animationDuration: '3s'}}></div>
+                        <div className="absolute -top-2 -right-2 w-2 h-2 bg-slate-400 rounded-full animate-spin opacity-60" style={{animationDuration: '4s', animationDirection: 'reverse'}}></div>
+                        <div className="absolute -bottom-2 -left-2 w-2 h-2 bg-slate-300 rounded-full animate-spin opacity-70" style={{animationDuration: '5s'}}></div>
+                        <div className="absolute -bottom-2 -right-2 w-3 h-3 bg-slate-400 rounded-full animate-spin opacity-50" style={{animationDuration: '3.5s', animationDirection: 'reverse'}}></div>
+                        
+                        <span className="text-2xl sm:text-3xl font-black text-white relative z-10 group-hover:scale-110 transition-transform">2</span>
+                      </div>
+                      <div className="bg-gradient-to-b from-slate-500 to-slate-600 h-3 w-26 sm:w-32 lg:w-36 mx-auto rounded-b-xl"></div>
+                      
+                      {/* Reflet sous le socle */}
+                      <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-20 h-2 bg-slate-400/20 rounded-full blur-sm"></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 1ère place - Champion */}
+                <div className="text-center transform hover:scale-115 transition-all duration-700 hover:-translate-y-6 relative group">
+                  {/* Aura dorée multi-couches */}
+                  <div className="absolute inset-0 animate-pulse">
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-40 bg-yellow-400/30 rounded-full blur-3xl"></div>
+                    <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-32 h-32 bg-yellow-300/20 rounded-full blur-2xl animate-ping"></div>
+                    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-24 h-24 bg-yellow-500/25 rounded-full blur-xl animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                  </div>
+                  
+                  {/* Confettis dorés pour le champion */}
+                  <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                    <div className="flex space-x-2">
+                      <div className="w-3 h-3 bg-yellow-300 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      <div className="w-2.5 h-2.5 bg-yellow-600 rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></div>
+                      <div className="w-2 h-2 bg-yellow-300 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                    </div>
+                  </div>
+                  
+                  {/* Carte équipe 1ère */}
+                  <div className="relative mb-6 group/card">
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-2xl blur-2xl opacity-60 group-hover:opacity-100 transition-all duration-700 group-hover:scale-115 animate-pulse"></div>
+                    <div className="relative bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 rounded-2xl p-8 border-4 border-yellow-300 transition-all duration-700">
+                      {/* Badge couronne flottant amélioré */}
+                      <div className="absolute -top-6 -right-6 bg-gradient-to-br from-yellow-200 to-yellow-400 rounded-full p-4 animate-pulse group-hover:animate-bounce">
+                        <Crown className="w-10 h-10 text-yellow-800" />
+                      </div>
+                      
+
+                      
+                      {/* Particules dorées flottantes */}
+                      <div className="absolute top-2 left-2 w-1 h-1 bg-yellow-200 rounded-full animate-ping opacity-70"></div>
+                      <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-yellow-300 rounded-full animate-pulse opacity-80" style={{animationDelay: '1s'}}></div>
+                      <div className="absolute bottom-4 left-4 w-1 h-1 bg-yellow-400 rounded-full animate-bounce opacity-60" style={{animationDelay: '1.5s'}}></div>
+                      
+                      <div className="text-center relative z-10">
+                        <div className="bg-white/40 rounded-full p-5 w-24 h-24 mx-auto mb-5 flex items-center justify-center group-hover:bg-white/50 transition-colors group-hover:scale-110 duration-500">
+                          <Crown className="w-14 h-14 text-white" />
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-black text-white mb-4 group-hover:scale-110 transition-transform duration-500">{rankings[0].teamName}</h3>
+                        <div className="bg-white/40 rounded-xl p-4 mb-4 group-hover:bg-white/50 transition-colors">
+                          <p className="text-3xl sm:text-4xl lg:text-5xl font-black text-white group-hover:scale-105 transition-transform">{rankings[0].totalPoints}</p>
+                          <p className="text-white/95 text-sm font-bold tracking-wider">POINTS</p>
+                        </div>
+                        <div className="flex justify-center space-x-2 text-sm">
+                          <span className="bg-red-600/90 px-4 py-2 rounded-lg text-white font-bold hover:bg-red-500 transition-colors hover:scale-105">{rankings[0].totalKills} K</span>
+                          <span className="bg-blue-600/90 px-4 py-2 rounded-lg text-white font-bold hover:bg-blue-500 transition-colors hover:scale-105">{rankings[0].gamesPlayed} G</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Socle 1ère - Le plus haut amélioré */}
+                  <div className="relative">
+                    <div className="bg-gradient-to-t from-yellow-700 via-yellow-500 to-yellow-400 h-28 sm:h-32 lg:h-36 w-32 sm:w-36 lg:w-40 rounded-t-3xl mx-auto border-4 border-yellow-300 flex items-center justify-center relative overflow-hidden transition-all duration-700">
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent"></div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-yellow-600/60 to-transparent"></div>
+                      
+                      {/* Étoiles tournantes dorées autour du socle */}
+                      <div className="absolute -top-3 -left-3 w-4 h-4 bg-yellow-300 rounded-full animate-spin opacity-90" style={{animationDuration: '2s'}}></div>
+                      <div className="absolute -top-3 -right-3 w-3 h-3 bg-yellow-400 rounded-full animate-spin opacity-80" style={{animationDuration: '3s', animationDirection: 'reverse'}}></div>
+                      <div className="absolute -bottom-3 -left-3 w-3 h-3 bg-yellow-300 rounded-full animate-spin opacity-85" style={{animationDuration: '4s'}}></div>
+                      <div className="absolute -bottom-3 -right-3 w-4 h-4 bg-yellow-400 rounded-full animate-spin opacity-75" style={{animationDuration: '2.5s', animationDirection: 'reverse'}}></div>
+                      
+                      {/* Étoiles supplémentaires */}
+                      <div className="absolute top-1/2 -left-4 w-2 h-2 bg-yellow-200 rounded-full animate-pulse opacity-70" style={{animationDelay: '0.5s'}}></div>
+                      <div className="absolute top-1/2 -right-4 w-2 h-2 bg-yellow-200 rounded-full animate-pulse opacity-70" style={{animationDelay: '1s'}}></div>
+                      
+                      <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-white relative z-10 group-hover:scale-125 transition-transform duration-500">1</span>
+                    </div>
+                    <div className="bg-gradient-to-b from-yellow-500 to-yellow-600 h-4 w-32 sm:w-36 lg:w-40 mx-auto rounded-b-xl"></div>
+                    
+                    {/* Reflet doré sous le socle */}
+                    <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-28 h-3 bg-yellow-400/30 rounded-full blur-lg"></div>
+                    
+                    {/* Rayons de lumière dorés */}
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-8 bg-gradient-to-b from-yellow-300/50 to-transparent animate-pulse"></div>
+                    <div className="absolute top-0 left-1/4 w-0.5 h-6 bg-gradient-to-b from-yellow-400/40 to-transparent animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                    <div className="absolute top-0 right-1/4 w-0.5 h-6 bg-gradient-to-b from-yellow-400/40 to-transparent animate-pulse" style={{animationDelay: '1s'}}></div>
+                  </div>
                 </div>
-                <div className="bg-yellow-500 h-32 w-36 rounded-t-lg flex items-center justify-center">
-                  <span className="text-3xl font-bold text-white">1</span>
-                </div>
+
+                {/* 3ème place */}
+                {rankings[2] && (
+                  <div className="text-center transform hover:scale-110 transition-all duration-700 hover:-translate-y-4 group">
+                    {/* Confettis bronze pour le 3ème */}
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-2 h-2 bg-amber-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      </div>
+                    </div>
+                    
+                    {/* Carte équipe 3ème */}
+                    <div className="relative mb-6 group/card">
+                      <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-amber-700 rounded-2xl blur-xl opacity-50 group-hover:opacity-90 transition-all duration-500 group-hover:scale-110"></div>
+                      <div className="relative bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 rounded-2xl p-6 border-2 border-amber-400 transition-all duration-500">
+                        {/* Badge trophée flottant */}
+                        <div className="absolute -top-4 -right-4 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full p-3 animate-pulse group-hover:animate-bounce">
+                          <Award className="w-7 h-7 text-amber-800" />
+                        </div>
+                        
+
+                        
+                        <div className="text-center relative z-10">
+                          <div className="bg-white/30 rounded-full p-4 w-18 h-18 mx-auto mb-4 flex items-center justify-center group-hover:bg-white/40 transition-colors">
+                            <Award className="w-10 h-10 text-white" />
+                          </div>
+                          <h3 className="text-lg sm:text-xl font-black text-white mb-3 truncate group-hover:scale-105 transition-transform">{rankings[2].teamName}</h3>
+                          <div className="bg-white/30 rounded-xl p-3 mb-3 group-hover:bg-white/40 transition-colors">
+                            <p className="text-2xl sm:text-3xl font-black text-white">{rankings[2].totalPoints}</p>
+                            <p className="text-white/95 text-xs font-bold tracking-wider">POINTS</p>
+                          </div>
+                          <div className="flex justify-center space-x-2 text-xs">
+                            <span className="bg-red-500/90 px-3 py-1.5 rounded-lg text-white font-bold hover:bg-red-400 transition-colors">{rankings[2].totalKills} K</span>
+                            <span className="bg-blue-500/90 px-3 py-1.5 rounded-lg text-white font-bold hover:bg-blue-400 transition-colors">{rankings[2].gamesPlayed} G</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Socle 3ème amélioré */}
+                    <div className="relative">
+                      <div className="bg-gradient-to-t from-amber-800 via-amber-600 to-amber-500 h-16 sm:h-20 w-26 sm:w-34 lg:w-38 rounded-t-3xl mx-auto border-3 border-amber-400 flex items-center justify-center relative overflow-hidden transition-all duration-500">
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-amber-700/50 to-transparent"></div>
+                        {/* Reflets bronze */}
+                        <div className="absolute top-2 left-2 right-2 h-1 bg-white/40 rounded-full"></div>
+                        <div className="absolute top-4 left-3 right-3 h-0.5 bg-white/20 rounded-full"></div>
+                        <span className="text-2xl sm:text-3xl font-black text-white relative z-10 group-hover:scale-110 transition-transform">3</span>
+                      </div>
+                      <div className="bg-gradient-to-b from-amber-600 to-amber-700 h-3 w-26 sm:w-34 lg:w-38 mx-auto rounded-b-xl"></div>
+                      {/* Ombre réfléchie */}
+                      <div className="bg-amber-500/20 h-1 w-20 sm:w-28 lg:w-32 mx-auto rounded-full blur-sm mt-1"></div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* 3ème place */}
-              {rankings[2] && (
-                <div className="text-center">
-                  <div className="bg-gradient-to-r from-amber-500 to-amber-700 rounded-xl p-6 mb-4 transform hover:scale-105 transition-transform">
-                    <Award className="w-12 h-12 text-white mx-auto mb-2" />
-                    <h3 className="text-xl font-bold text-white mb-2">{rankings[2].teamName}</h3>
-                    <p className="text-3xl font-bold text-white">{rankings[2].totalPoints}</p>
-                    <p className="text-white/80 text-sm">points</p>
+              {/* Message de félicitations pour le podium */}
+              <div className="text-center mt-12">
+                <div className="relative bg-gradient-to-r from-purple-600/30 to-blue-600/30 backdrop-blur-lg rounded-2xl p-8 border-2 border-white/30 max-w-3xl mx-auto overflow-hidden group">
+                  {/* Effet de brillance qui traverse */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-full group-hover:-translate-x-full transition-transform duration-2000"></div>
+                  
+                  {/* Constellation d'étoiles */}
+                  <div className="flex justify-center space-x-3 mb-4">
+                    <Star className="w-8 h-8 text-yellow-400 animate-pulse transform hover:scale-125 transition-transform" />
+                    <Star className="w-10 h-10 text-yellow-300 animate-pulse transform hover:scale-125 transition-transform" style={{animationDelay: '0.2s'}} />
+                    <Star className="w-8 h-8 text-yellow-400 animate-pulse transform hover:scale-125 transition-transform" style={{animationDelay: '0.4s'}} />
                   </div>
-                  <div className="bg-amber-600 h-20 w-32 rounded-t-lg flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white">3</span>
-                  </div>
+                  
+                  {/* Titre avec effet arc-en-ciel */}
+                  <h3 className="text-2xl font-black mb-4 relative">
+                    <span className="bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent animate-pulse">
+                      🎉 Félicitations aux Champions ! 🎉
+                    </span>
+                  </h3>
+                  
+                  <p className="text-white/90 text-base font-medium relative z-10">
+                    Un niveau de jeu exceptionnel et une compétition acharnée jusqu&apos;au bout !
+                  </p>
+                  
+                  {/* Particules flottantes dans le message */}
+                  <div className="absolute top-2 left-4 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-60"></div>
+                  <div className="absolute top-6 right-6 w-1 h-1 bg-purple-400 rounded-full animate-pulse opacity-70"></div>
+                  <div className="absolute bottom-4 left-8 w-1 h-1 bg-blue-400 rounded-full animate-bounce opacity-50"></div>
+                  <div className="absolute bottom-2 right-4 w-1 h-1 bg-pink-400 rounded-full animate-ping opacity-60"></div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
