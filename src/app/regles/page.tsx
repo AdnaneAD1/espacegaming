@@ -322,10 +322,11 @@ export default function ReglesPage() {
                                     <li>• Utilisation de bots</li>
                                     <li>• Exploitation de bugs ou glitchs (camoufler son hitbox, traverser les murs, etc.)</li>
                                     <li>• Utilisation des armes interdites : Machine de guerre, Thumper, Purificateur, Annihilateur, shotguns auto/semi-auto (Jak-12, Echo…), armes à effet glitché/buggué (selon la Maj)</li>
-                                    <li>• Utilisation des classes/atouts interdits (toutes sauf medic, defense, ninja, trickers)</li>
+                                    <li>• Utilisation des classes/atouts interdits (toutes sauf medic, defense, ninja, trickster)</li>
                                     <li>• Utilisation des véhicules interdits : Tank, Jackal, Overbike</li>
                                     <li>• Team-up (alliance entre équipes)</li>
                                     <li>• Stream-sniping (même en différé)</li>
+                                    <li>• Utilisation des munitions Omega ou thermite sur DLQ, Rytec AMR et autre arme pouvant en équiper</li>
                                 </ul>
                             </div>
                             <div>
