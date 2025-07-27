@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Trophy, Medal, Award, Crown, Star, Users, Target, TrendingUp } from 'lucide-react';
@@ -13,6 +13,51 @@ export default function ClassementFinal() {
   const [rankings, setRankings] = useState<TeamRanking[]>([]);
   const [loading, setLoading] = useState(true);
   const [isResultsAvailable, setIsResultsAvailable] = useState(false);
+
+  // Calculer les classements
+  const updateRankings = useCallback((results: GameResult[]) => {
+    if (teams.length === 0) return;
+
+    const teamStats: Record<string, TeamRanking> = {};
+    
+    // Initialiser les stats pour toutes les équipes validées
+    teams.filter(team => team.status === 'validated').forEach(team => {
+      teamStats[team.id!] = {
+        teamId: team.id!,
+        teamName: team.name,
+        totalPoints: 0,
+        totalKills: 0,
+        gamesPlayed: 0,
+        averagePoints: 0,
+        bestPlacement: 25,
+        position: 0
+      };
+    });
+
+    // Calculer les stats à partir des résultats (maximum 3 parties par équipe)
+    results.forEach(result => {
+      if (teamStats[result.teamId] && teamStats[result.teamId].gamesPlayed < 3) {
+        teamStats[result.teamId].totalPoints += result.points;
+        teamStats[result.teamId].totalKills += result.kills;
+        teamStats[result.teamId].gamesPlayed += 1;
+        teamStats[result.teamId].bestPlacement = Math.min(
+          teamStats[result.teamId].bestPlacement,
+          result.placement
+        );
+      }
+    });
+
+    // Créer le classement final
+    const rankingArray = Object.values(teamStats)
+      .map(team => ({
+        ...team,
+        averagePoints: team.gamesPlayed > 0 ? team.totalPoints / team.gamesPlayed : 0
+      }))
+      .sort((a, b) => b.totalPoints - a.totalPoints)
+      .map((team, index) => ({ ...team, position: index + 1 }));
+
+    setRankings(rankingArray);
+  }, [teams]);
 
   // Vérifier si les résultats sont disponibles
   useEffect(() => {
@@ -52,64 +97,30 @@ export default function ClassementFinal() {
   // Charger les résultats du tournoi
   useEffect(() => {
     const unsubscribe = onSnapshot(
-      query(collection(db, 'tournament-results'), orderBy('createdAt', 'desc')),
+      query(collection(db, 'tournament-results'), orderBy('timestamp', 'desc')),
       (snapshot) => {
-        const results = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as GameResult));
+        const results: GameResult[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          results.push({
+            id: doc.id,
+            ...data,
+            timestamp: data.timestamp?.toDate() || new Date()
+          } as GameResult);
+        });
         setGameResults(results);
+        updateRankings(results);
         setLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [updateRankings]);
 
-  // Calculer les classements
+  // Mettre à jour les classements quand les résultats changent
   useEffect(() => {
-    if (teams.length === 0) return;
-
-    const teamStats: Record<string, TeamRanking> = {};
-    
-    // Initialiser les stats pour toutes les équipes validées
-    teams.filter(team => team.status === 'validated').forEach(team => {
-      teamStats[team.id!] = {
-        teamId: team.id!,
-        teamName: team.name,
-        totalPoints: 0,
-        totalKills: 0,
-        gamesPlayed: 0,
-        averagePoints: 0,
-        bestPlacement: 25,
-        position: 0
-      };
-    });
-
-    // Calculer les stats à partir des résultats
-    gameResults.forEach(result => {
-      if (teamStats[result.teamId]) {
-        teamStats[result.teamId].totalPoints += result.points;
-        teamStats[result.teamId].totalKills += result.kills;
-        teamStats[result.teamId].gamesPlayed += 1;
-        teamStats[result.teamId].bestPlacement = Math.min(
-          teamStats[result.teamId].bestPlacement,
-          result.placement
-        );
-      }
-    });
-
-    // Créer le classement final
-    const rankingArray = Object.values(teamStats)
-      .map(team => ({
-        ...team,
-        averagePoints: team.gamesPlayed > 0 ? team.totalPoints / team.gamesPlayed : 0
-      }))
-      .sort((a, b) => b.totalPoints - a.totalPoints)
-      .map((team, index) => ({ ...team, position: index + 1 }));
-
-    setRankings(rankingArray);
-  }, [teams, gameResults]);
+    updateRankings(gameResults);
+  }, [gameResults, updateRankings]);
 
   // Fonction pour obtenir l'icône du podium
   const getPodiumIcon = (position: number) => {
