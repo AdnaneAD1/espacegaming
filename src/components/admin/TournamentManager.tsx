@@ -5,7 +5,7 @@ import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { GameResult, TeamRanking, calculatePoints } from '@/types/tournament';
 import { Team } from '@/types';
-import { Trophy, Plus, Eye, Target, Award, Save } from 'lucide-react';
+import { Trophy, Plus, Eye, Target, Award, Save, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface TournamentManagerProps {
@@ -16,6 +16,7 @@ export default function TournamentManager({ teams }: TournamentManagerProps) {
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [rankings, setRankings] = useState<TeamRanking[]>([]);
   const [showAddResult, setShowAddResult] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [newResult, setNewResult] = useState({
     teamId: '',
     placement: 1,
@@ -102,6 +103,7 @@ export default function TournamentManager({ teams }: TournamentManagerProps) {
 
     const points = calculatePoints(newResult.placement, newResult.kills);
 
+    setIsLoading(true);
     try {
       await addDoc(collection(db, 'tournament-results'), {
         gameNumber: gameResults.length + 1,
@@ -119,6 +121,8 @@ export default function TournamentManager({ teams }: TournamentManagerProps) {
     } catch (error) {
       console.error('Erreur lors de l\'ajout du résultat:', error);
       toast.error('Erreur lors de l\'ajout du résultat');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -314,14 +318,28 @@ export default function TournamentManager({ teams }: TournamentManagerProps) {
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={handleAddResult}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                disabled={isLoading}
+                className={`flex-1 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 text-white ${
+                  isLoading 
+                    ? 'bg-blue-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
-                <Save className="w-4 h-4" />
-                <span>Sauvegarder</span>
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{isLoading ? 'Sauvegarde...' : 'Sauvegarder'}</span>
               </button>
               <button
                 onClick={() => setShowAddResult(false)}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
+                disabled={isLoading}
+                className={`flex-1 py-2 rounded-lg transition-colors text-white ${
+                  isLoading
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-gray-500 hover:bg-gray-600'
+                }`}
               >
                 Annuler
               </button>
