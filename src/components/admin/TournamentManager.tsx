@@ -41,9 +41,9 @@ export default function TournamentManager({ teams }: TournamentManagerProps) {
       };
     });
 
-    // Calculer les stats à partir des résultats
+    // Calculer les stats à partir des résultats (maximum 3 parties par équipe)
     results.forEach(result => {
-      if (teamStats[result.teamId]) {
+      if (teamStats[result.teamId] && teamStats[result.teamId].gamesPlayed < 3) {
         teamStats[result.teamId].totalPoints += result.points;
         teamStats[result.teamId].totalKills += result.kills;
         teamStats[result.teamId].gamesPlayed += 1;
@@ -98,6 +98,13 @@ export default function TournamentManager({ teams }: TournamentManagerProps) {
     const team = teams.find(t => t.id === newResult.teamId);
     if (!team) {
       toast.error('Équipe introuvable');
+      return;
+    }
+
+    // Vérifier si l'équipe a déjà joué 3 parties
+    const teamRanking = rankings.find(r => r.teamId === newResult.teamId);
+    if (teamRanking && teamRanking.gamesPlayed >= 3) {
+      toast.error('Cette équipe a déjà joué le maximum de 3 parties');
       return;
     }
 
@@ -167,7 +174,7 @@ export default function TournamentManager({ teams }: TournamentManagerProps) {
             <Target className="w-5 h-5 text-blue-500" />
             <span className="text-gray-600">Parties jouées</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{Math.max(...gameResults.map(r => r.gameNumber), 0)}</p>
+          <p className="text-2xl font-bold text-gray-900">3</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="flex items-center space-x-2">
@@ -275,9 +282,22 @@ export default function TournamentManager({ teams }: TournamentManagerProps) {
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Sélectionner une équipe</option>
-                  {teams.filter(t => t.status === 'validated').map(team => (
-                    <option key={team.id} value={team.id}>{team.name}</option>
-                  ))}
+                  {teams.filter(t => t.status === 'validated').map(team => {
+                    const teamRanking = rankings.find(r => r.teamId === team.id);
+                    const gamesPlayed = teamRanking?.gamesPlayed || 0;
+                    const isMaxGames = gamesPlayed >= 3;
+                    
+                    return (
+                      <option 
+                        key={team.id} 
+                        value={team.id}
+                        disabled={isMaxGames}
+                        style={{ color: isMaxGames ? '#9CA3AF' : 'inherit' }}
+                      >
+                        {team.name} ({gamesPlayed}/3 parties{isMaxGames ? ' - COMPLET' : ''})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

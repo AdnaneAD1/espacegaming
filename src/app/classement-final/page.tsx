@@ -201,7 +201,7 @@ export default function ClassementFinal() {
               <TrendingUp className="w-8 h-8 text-green-400" />
               <div>
                 <p className="text-white/70 text-sm">Parties jouées</p>
-                <p className="text-2xl font-bold text-white">{gameResults.length}</p>
+                <p className="text-2xl font-bold text-white">3</p>
               </div>
             </div>
           </div>
