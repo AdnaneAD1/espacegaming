@@ -24,13 +24,44 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url)
         const format = searchParams.get('format') || 'csv'
+        const tournamentId = searchParams.get('tournament')
 
-        // Récupérer toutes les équipes
-        const teamsSnapshot = await adminDb.collection('teams').orderBy('createdAt', 'desc').get()
-        const teams = teamsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })) as Team[]
+        let teams: Team[] = []
+        let tournamentName = 'Tournoi Battle Royale CODM'
+
+        if (tournamentId && tournamentId !== 'all') {
+            // Charger les équipes d'un tournoi spécifique
+            const tournamentDoc = await adminDb.collection('tournaments').doc(tournamentId).get()
+            if (!tournamentDoc.exists) {
+                return NextResponse.json({ error: 'Tournoi non trouvé' }, { status: 404 })
+            }
+            
+            const tournamentData = tournamentDoc.data()
+            tournamentName = tournamentData?.name || 'Tournoi'
+            
+            const teamsSnapshot = await adminDb
+                .collection('tournaments')
+                .doc(tournamentId)
+                .collection('teams')
+                .orderBy('createdAt', 'desc')
+                .get()
+            
+            teams = teamsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Team[]
+        } else {
+            // Charger toutes les équipes (ancien système)
+            const teamsSnapshot = await adminDb.collection('teams').orderBy('createdAt', 'desc').get()
+            teams = teamsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Team[]
+            
+            if (tournamentId !== 'all') {
+                tournamentName = 'Toutes les données (ancien système)'
+            }
+        }
 
         if (format === 'pdf') {
             // Filtrer uniquement les équipes validées
@@ -62,7 +93,7 @@ export async function GET(request: NextRequest) {
                 pageCount++;
                 
                 // Ajouter le titre sur chaque nouvelle page
-                const pngBuffer = textToPngBuffer('Tournoi Battle Royale CODM — Liste des équipes validées', 28, 'Noto Sans', '#181c2c', 700, 48);
+                const pngBuffer = textToPngBuffer(`${tournamentName} — Liste des équipes validées`, 28, 'Noto Sans', '#181c2c', 700, 48);
                 const pngImage = await pdfDoc.embedPng(pngBuffer);
                 currentPage.drawImage(pngImage, { x: 60, y: currentY - 10, width: 700, height: 48 });
                 currentY -= HEADER_HEIGHT + 20;
@@ -89,7 +120,7 @@ export async function GET(request: NextRequest) {
 
             // Bandeau titre sur la première page
             {
-                const pngBuffer = textToPngBuffer('Tournoi Battle Royale CODM — Liste des équipes validées', 28, 'Noto Sans', '#181c2c', 700, 48);
+                const pngBuffer = textToPngBuffer(`${tournamentName} — Liste des équipes validées`, 28, 'Noto Sans', '#181c2c', 700, 48);
                 const pngImage = await pdfDoc.embedPng(pngBuffer);
                 currentPage.drawImage(pngImage, { x: 60, y: currentY - 10, width: 700, height: 48 });
             }
@@ -271,10 +302,14 @@ export async function GET(request: NextRequest) {
 
             const csvContent = csvRows.join('\n')
 
+            const fileName = tournamentId && tournamentId !== 'all' 
+                ? `tournoi-${tournamentId}-equipes-validees-${new Date().toISOString().split('T')[0]}.csv`
+                : `tournoi-codm-equipes-validees-${new Date().toISOString().split('T')[0]}.csv`
+            
             return new NextResponse(csvContent, {
                 headers: {
                     'Content-Type': 'text/csv',
-                    'Content-Disposition': `attachment; filename="tournoi-codm-${new Date().toISOString().split('T')[0]}.csv"`
+                    'Content-Disposition': `attachment; filename="${fileName}"`
                 }
             })
         }
@@ -284,7 +319,8 @@ export async function GET(request: NextRequest) {
             const exportData = {
                 exportDate: new Date().toISOString(),
                 tournament: {
-                    name: 'Tournoi Battle Royale CODM',
+                    id: tournamentId || 'legacy',
+                    name: tournamentName,
                     totalTeams: teams.length,
                     validatedTeams: teams.filter(t => t.status === 'validated').length,
                     totalPlayers: teams.reduce((acc, team) => acc + team.players.length, 0)
@@ -320,9 +356,13 @@ export async function GET(request: NextRequest) {
                 }))
             }
 
+            const jsonFileName = tournamentId && tournamentId !== 'all' 
+                ? `tournoi-${tournamentId}-${new Date().toISOString().split('T')[0]}.json`
+                : `tournoi-codm-${new Date().toISOString().split('T')[0]}.json`
+            
             return NextResponse.json(exportData, {
                 headers: {
-                    'Content-Disposition': `attachment; filename="tournoi-codm-${new Date().toISOString().split('T')[0]}.json"`
+                    'Content-Disposition': `attachment; filename="${jsonFileName}"`
                 }
             })
         }

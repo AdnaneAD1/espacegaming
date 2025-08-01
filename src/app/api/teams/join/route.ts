@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { joinTeamSchema } from '@/lib/validations';
 import { v4 as uuidv4 } from 'uuid';
+import { Tournament } from '@/types/tournament-multi';
+
+// Fonction pour récupérer le tournoi actif
+async function getActiveTournament(): Promise<Tournament | null> {
+    const tournamentsSnapshot = await adminDb
+        .collection('tournaments')
+        .where('status', '==', 'active')
+        .limit(1)
+        .get();
+    
+    if (tournamentsSnapshot.empty) {
+        return null;
+    }
+    
+    const tournamentDoc = tournamentsSnapshot.docs[0];
+    return {
+        id: tournamentDoc.id,
+        ...tournamentDoc.data()
+    } as Tournament;
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -10,8 +30,31 @@ export async function POST(request: NextRequest) {
         // Validation des données
         const validatedData = joinTeamSchema.parse(body);
 
-        // Rechercher l'équipe
+        // Vérifier qu'un tournoi actif existe
+        const activeTournament = await getActiveTournament();
+        if (!activeTournament) {
+            return NextResponse.json(
+                { error: 'Aucun tournoi actif disponible pour rejoindre une équipe' },
+                { status: 400 }
+            );
+        }
+
+        // Vérifier si les inscriptions sont encore ouvertes
+        if (activeTournament.deadline_register) {
+            const now = new Date();
+            const deadline = new Date(activeTournament.deadline_register);
+            if (now > deadline) {
+                return NextResponse.json(
+                    { error: 'Les inscriptions sont fermées pour ce tournoi' },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // Rechercher l'équipe dans le tournoi actif
         const teamSnapshot = await adminDb
+            .collection('tournaments')
+            .doc(activeTournament.id)
             .collection('teams')
             .where('code', '==', validatedData.teamCode.toUpperCase())
             .limit(1)
@@ -47,11 +90,11 @@ interface Player {
     isCaptain: boolean;
 }
 
-// Vérifier si le pseudo n'est pas déjà pris dans cette équipe
+        // Vérifier si le pseudo n'est pas déjà pris dans cette équipe
         const existingPlayer = teamData.players?.find(
-            (player: Player) => player.pseudo.toLowerCase() === validatedData.player.pseudo.toLowerCase()
+            (player: Player) => player.pseudo.trim().toLowerCase() === validatedData.player.pseudo.trim().toLowerCase()
         );
-
+        
         if (existingPlayer) {
             return NextResponse.json(
                 { error: 'Ce pseudo est déjà utilisé dans cette équipe' },
@@ -59,26 +102,29 @@ interface Player {
             );
         }
 
-        // Vérifier si le joueur n'est pas déjà dans une autre équipe
-        const allTeamsSnapshot = await adminDb.collection('teams').get();
+        // Vérifier si le joueur n'est pas déjà dans une autre équipe du tournoi actif
+        const allTeamsSnapshot = await adminDb
+            .collection('tournaments')
+            .doc(activeTournament.id)
+            .collection('teams')
+            .get();
         let playerInOtherTeam = false;
 
         allTeamsSnapshot.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
-    const data = doc.data();
-    if (data.players) {
-        const found = data.players.find((player: Player) =>
-            player.pseudo.toLowerCase() === validatedData.player.pseudo.toLowerCase() ||
-            player.whatsapp === validatedData.player.whatsapp
-        );
-        if (found && doc.id !== teamDoc.id) {
-            playerInOtherTeam = true;
-        }
-    }
-});
+            const data = doc.data();
+            if (data.players) {
+                const found = data.players.find((player: Player) =>
+                    player.pseudo.trim().toLowerCase() === validatedData.player.pseudo.trim().toLowerCase()
+                );
+                if (found && doc.id !== teamDoc.id) {
+                    playerInOtherTeam = true;
+                }
+            }
+        });
 
         if (playerInOtherTeam) {
             return NextResponse.json(
-                { error: 'Ce joueur est déjà inscrit dans une autre équipe' },
+                { error: 'Ce joueur est déjà inscrit dans une autre équipe de ce tournoi' },
                 { status: 400 }
             );
         }
@@ -105,16 +151,7 @@ interface Player {
             updatedAt: new Date(),
         });
 
-        // Mettre à jour les statistiques
-        const statsDoc = adminDb.collection('stats').doc('tournament');
-        const statsSnapshot = await statsDoc.get();
-        const currentStats = statsSnapshot.data() || {};
-
-        await statsDoc.set({
-            ...currentStats,
-            totalPlayers: (currentStats.totalPlayers || 0) + 1,
-            lastUpdated: new Date(),
-        }, { merge: true });
+        // Les statistiques sont maintenant calculées dynamiquement, pas besoin de les mettre à jour
 
         return NextResponse.json({
             success: true,

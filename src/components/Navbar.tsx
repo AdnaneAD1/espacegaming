@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, X, Trophy, Users, FileText, Search, Shield, UserPlus, Award } from 'lucide-react';
+import { Menu, X, Trophy, Users, FileText, Search, Shield, UserPlus, Award, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
     { name: 'Accueil', href: '/', icon: Trophy },
     { name: 'Règles', href: '/regles', icon: FileText },
     { name: 'Équipes', href: '/equipes-validees', icon: Award },
+    { name: 'Historique', href: '/historique', icon: Clock },
     { name: 'Inscription', href: '/inscription', icon: Users },
     { name: 'Rejoindre', href: '/rejoindre', icon: UserPlus },
     { name: 'Suivi', href: '/suivi', icon: Search },
@@ -30,14 +31,17 @@ export default function Navbar() {
                             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                                 <Trophy className="w-5 h-5 text-white" />
                             </div>
-                            <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            <span className="text-lg lg:text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent hidden sm:block">
                                 Espace Gaming CODM
+                            </span>
+                            <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent sm:hidden">
+                                EG CODM
                             </span>
                         </Link>
                     </div>
 
                     {/* Navigation desktop */}
-                    <div className="hidden md:flex items-center space-x-1">
+                    <div className="hidden lg:flex items-center space-x-1">
                         {navigation.map((item) => {
                             const Icon = item.icon;
                             const isActive = pathname === item.href;
@@ -47,14 +51,39 @@ export default function Navbar() {
                                     key={item.name}
                                     href={item.href}
                                     className={cn(
-                                        "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                                        "flex items-center space-x-2 px-3 xl:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                                         isActive
                                             ? "bg-blue-600 text-white shadow-lg"
                                             : "text-gray-300 hover:text-white hover:bg-gray-700"
                                     )}
                                 >
                                     <Icon className="w-4 h-4" />
-                                    <span>{item.name}</span>
+                                    <span className="hidden xl:block">{item.name}</span>
+                                    <span className="xl:hidden text-xs">{item.name}</span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+
+                    {/* Navigation tablette (icônes seulement) */}
+                    <div className="hidden md:flex lg:hidden items-center space-x-1">
+                        {navigation.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = pathname === item.href;
+
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    title={item.name}
+                                    className={cn(
+                                        "flex items-center justify-center p-2 rounded-lg transition-all duration-200",
+                                        isActive
+                                            ? "bg-blue-600 text-white shadow-lg"
+                                            : "text-gray-300 hover:text-white hover:bg-gray-700"
+                                    )}
+                                >
+                                    <Icon className="w-5 h-5" />
                                 </Link>
                             );
                         })}
@@ -64,7 +93,8 @@ export default function Navbar() {
                     <div className="md:hidden flex items-center">
                         <button
                             onClick={() => setIsOpen(!isOpen)}
-                            className="text-gray-300 hover:text-white p-2"
+                            className="text-gray-300 hover:text-white p-2 rounded-lg hover:bg-gray-700 transition-colors"
+                            aria-label="Menu de navigation"
                         >
                             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                         </button>

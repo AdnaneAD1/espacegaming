@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,6 +33,7 @@ export default function InscriptionPage() {
     type UploadState = { isUploading?: boolean; uploadedUrl?: string; error?: string | null };
     type UploadStates = { [key: string]: UploadState };
     const [uploadStates, setUploadStates] = useState<UploadStates>({});
+    const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
     const { upload } = useCloudinaryUpload();
 
     const {
@@ -187,8 +188,32 @@ export default function InscriptionPage() {
         }
     };
 
+    // Vérifier l'ouverture des inscriptions au chargement
+    useEffect(() => {
+        const checkRegistrationStatus = async () => {
+            try {
+                const isOpen = await isRegistrationOpen();
+                setRegistrationOpen(isOpen);
+            } catch (error) {
+                console.error('Erreur lors de la vérification des inscriptions:', error);
+                setRegistrationOpen(false);
+            }
+        };
+
+        checkRegistrationStatus();
+    }, []);
+
+    // Affichage de chargement pendant la vérification
+    if (registrationOpen === null) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+                <div className="text-white text-xl">Vérification des inscriptions...</div>
+            </div>
+        );
+    }
+
     // Vérifie ouverture inscription côté client
-    if (!isRegistrationOpen()) {
+    if (!registrationOpen) {
         return <InscriptionClosed />;
     }
 
@@ -269,10 +294,18 @@ export default function InscriptionPage() {
                                     {...register('captain.country')}
                                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     onChange={e => {
-                                        setValue('captain.country', e.target.value);
-                                        setShowOtherCaptainCountry(e.target.value === 'Autre');
+                                        const selectedValue = e.target.value;
+                                        if (selectedValue === 'Autre') {
+                                            setShowOtherCaptainCountry(true);
+                                            setOtherCaptainCountryValue('');
+                                            // Ne pas définir la valeur sur "Autre" pour forcer la saisie du pays personnalisé
+                                        } else {
+                                            setShowOtherCaptainCountry(false);
+                                            setOtherCaptainCountryValue('');
+                                            setValue('captain.country', selectedValue);
+                                        }
                                     }}
-                                    value={watch('captain.country')}
+                                    value={showOtherCaptainCountry ? 'Autre' : watch('captain.country')}
                                 >
                                     <option value="">Sélectionnez votre pays</option>
                                     {countries.map((country) => (
@@ -283,12 +316,14 @@ export default function InscriptionPage() {
                                     <input
                                         type="text"
                                         className="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="Entrez votre pays"
+                                        placeholder="Entrez votre pays *"
                                         value={otherCaptainCountryValue}
                                         onChange={e => {
-                                            setOtherCaptainCountryValue(e.target.value);
-                                            setValue('captain.country', e.target.value);
+                                            const customCountry = e.target.value;
+                                            setOtherCaptainCountryValue(customCountry);
+                                            setValue('captain.country', customCountry);
                                         }}
+                                        required
                                     />
                                 )}
                                 {errors.captain?.country && (
@@ -395,10 +430,18 @@ export default function InscriptionPage() {
                                         {...register(`players.${idx}.country` as const)}
                                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         onChange={e => {
-                                            setValue(`players.${idx}.country`, e.target.value);
-                                            setOtherPlayersCountry(prev => ({ ...prev, [idx]: e.target.value === 'Autre' }));
+                                            const selectedValue = e.target.value;
+                                            if (selectedValue === 'Autre') {
+                                                setOtherPlayersCountry(prev => ({ ...prev, [idx]: true }));
+                                                setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: '' }));
+                                                // Ne pas définir la valeur sur "Autre" pour forcer la saisie du pays personnalisé
+                                            } else {
+                                                setOtherPlayersCountry(prev => ({ ...prev, [idx]: false }));
+                                                setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: '' }));
+                                                setValue(`players.${idx}.country`, selectedValue);
+                                            }
                                         }}
-                                        value={watch(`players.${idx}.country`)}
+                                        value={otherPlayersCountry[idx] ? 'Autre' : watch(`players.${idx}.country`)}
                                     >
                                         <option value="">Sélectionnez le pays</option>
                                         {countries.map((country) => (
@@ -409,12 +452,14 @@ export default function InscriptionPage() {
                                         <input
                                             type="text"
                                             className="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="Entrez le pays"
+                                            placeholder="Entrez le pays *"
                                             value={otherPlayersCountryValue[idx] || ''}
                                             onChange={e => {
-                                                setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: e.target.value }));
-                                                setValue(`players.${idx}.country`, e.target.value);
+                                                const customCountry = e.target.value;
+                                                setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: customCountry }));
+                                                setValue(`players.${idx}.country`, customCountry);
                                             }}
+                                            required
                                         />
                                     )}
                                     {errors.players?.[idx]?.country && (

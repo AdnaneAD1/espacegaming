@@ -6,6 +6,8 @@ import { db } from '@/lib/firebase';
 import { Trophy, Medal, Award, Crown, Star, Users, Target, TrendingUp } from 'lucide-react';
 import { Team } from '@/types/index';
 import { GameResult, TeamRanking } from '@/types/tournament';
+import { Tournament } from '@/types/tournament-multi';
+import { TournamentService } from '@/services/tournamentService';
 
 export default function ClassementFinal() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -13,6 +15,8 @@ export default function ClassementFinal() {
   const [rankings, setRankings] = useState<TeamRanking[]>([]);
   const [loading, setLoading] = useState(true);
   const [isResultsAvailable, setIsResultsAvailable] = useState(false);
+  const [activeTournament, setActiveTournament] = useState<Tournament | null>(null);
+  const [tournamentLoading, setTournamentLoading] = useState(true);
 
   // Calculer les classements
   const updateRankings = useCallback((results: GameResult[]) => {
@@ -59,45 +63,96 @@ export default function ClassementFinal() {
     setRankings(rankingArray);
   }, [teams]);
 
-  // Vérifier si les résultats sont disponibles
+  // Charger le tournoi actif et vérifier la disponibilité des résultats
   useEffect(() => {
-    const checkResultsAvailability = () => {
-      const revealDate = process.env.NEXT_PUBLIC_RESULTS_REVEAL_DATE;
-      if (!revealDate) {
-        setIsResultsAvailable(false);
-        return;
+    const loadActiveTournament = async () => {
+      try {
+        const tournament = await TournamentService.getActiveTournament();
+        setActiveTournament(tournament);
+        
+        // Vérifier si les résultats sont disponibles
+        if (tournament?.date_result) {
+          const now = new Date();
+          setIsResultsAvailable(now >= tournament.date_result);
+        } else {
+          // Fallback sur l'ancienne méthode si pas de date_result
+          const revealDate = process.env.NEXT_PUBLIC_RESULTS_REVEAL_DATE;
+          if (revealDate) {
+            const now = new Date();
+            const targetDate = new Date(revealDate);
+            setIsResultsAvailable(now >= targetDate);
+          } else {
+            setIsResultsAvailable(false);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du tournoi actif:', error);
+        // Fallback sur l'ancienne méthode
+        const revealDate = process.env.NEXT_PUBLIC_RESULTS_REVEAL_DATE;
+        if (revealDate) {
+          const now = new Date();
+          const targetDate = new Date(revealDate);
+          setIsResultsAvailable(now >= targetDate);
+        } else {
+          setIsResultsAvailable(false);
+        }
+      } finally {
+        setTournamentLoading(false);
       }
-
-      const now = new Date();
-      const targetDate = new Date(revealDate);
-      setIsResultsAvailable(now >= targetDate);
     };
 
-    checkResultsAvailability();
-    const interval = setInterval(checkResultsAvailability, 1000);
+    loadActiveTournament();
+    
+    // Vérifier périodiquement la disponibilité des résultats
+    const interval = setInterval(() => {
+      if (activeTournament?.date_result) {
+        const now = new Date();
+        setIsResultsAvailable(now >= activeTournament.date_result);
+      }
+    }, 1000);
+    
     return () => clearInterval(interval);
-  }, []);
+  }, [activeTournament?.date_result]);
 
-  // Charger les équipes
+  // Charger les équipes du tournoi actif
   useEffect(() => {
+    if (!activeTournament || tournamentLoading) return;
+
     const unsubscribe = onSnapshot(
-      query(collection(db, 'teams'), orderBy('createdAt', 'desc')),
+      query(collection(db, `tournaments/${activeTournament.id}/teams`), orderBy('createdAt', 'desc')),
       (snapshot) => {
         const teamsData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         } as Team));
         setTeams(teamsData);
+      },
+      (error) => {
+        console.error('Erreur lors du chargement des équipes:', error);
+        // Fallback sur l'ancien système si erreur
+        const fallbackUnsubscribe = onSnapshot(
+          query(collection(db, 'teams'), orderBy('createdAt', 'desc')),
+          (snapshot) => {
+            const teamsData = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            } as Team));
+            setTeams(teamsData);
+          }
+        );
+        return fallbackUnsubscribe;
       }
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [activeTournament, tournamentLoading]);
 
-  // Charger les résultats du tournoi
+  // Charger les résultats du tournoi actif
   useEffect(() => {
+    if (!activeTournament || tournamentLoading) return;
+
     const unsubscribe = onSnapshot(
-      query(collection(db, 'tournament-results'), orderBy('timestamp', 'desc')),
+      query(collection(db, `tournaments/${activeTournament.id}/results`), orderBy('timestamp', 'desc')),
       (snapshot) => {
         const results: GameResult[] = [];
         snapshot.forEach((doc) => {
@@ -111,11 +166,33 @@ export default function ClassementFinal() {
         setGameResults(results);
         updateRankings(results);
         setLoading(false);
+      },
+      (error) => {
+        console.error('Erreur lors du chargement des résultats:', error);
+        // Fallback sur l'ancien système si erreur
+        const fallbackUnsubscribe = onSnapshot(
+          query(collection(db, 'tournament-results'), orderBy('timestamp', 'desc')),
+          (snapshot) => {
+            const results: GameResult[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              results.push({
+                id: doc.id,
+                ...data,
+                timestamp: data.timestamp?.toDate() || new Date()
+              } as GameResult);
+            });
+            setGameResults(results);
+            updateRankings(results);
+            setLoading(false);
+          }
+        );
+        return fallbackUnsubscribe;
       }
     );
 
     return () => unsubscribe();
-  }, [updateRankings]);
+  }, [activeTournament, tournamentLoading, updateRankings]);
 
   // Mettre à jour les classements quand les résultats changent
   useEffect(() => {
@@ -268,7 +345,127 @@ export default function ClassementFinal() {
               {/* Effet de sol réfléchissant */}
               <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white/5 to-transparent rounded-full blur-2xl"></div>
 
-              <div className="flex justify-center items-end space-x-2 sm:space-x-6 lg:space-x-8">
+              {/* Version mobile : podium empilé verticalement */}
+              <div className="block md:hidden space-y-8">
+                {/* 1ère place en haut */}
+                <div className="text-center transform hover:scale-105 transition-all duration-700 relative group">
+                  {/* Aura dorée */}
+                  <div className="absolute inset-0 animate-pulse">
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-32 bg-yellow-400/30 rounded-full blur-2xl"></div>
+                  </div>
+                  
+                  {/* Carte équipe 1ère - mobile */}
+                  <div className="relative mb-4 group/card">
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-xl blur-lg opacity-60 group-hover:opacity-100 transition-all duration-500"></div>
+                    <div className="relative bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 rounded-xl p-4 border-2 border-yellow-300">
+                      <div className="absolute -top-3 -right-3 bg-gradient-to-br from-yellow-200 to-yellow-400 rounded-full p-2">
+                        <Crown className="w-6 h-6 text-yellow-800" />
+                      </div>
+                      
+                      <div className="text-center relative z-10">
+                        <div className="bg-white/40 rounded-full p-3 w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                          <Crown className="w-8 h-8 text-white" />
+                        </div>
+                        <h3 className="text-lg font-black text-white mb-2">{rankings[0].teamName}</h3>
+                        <div className="bg-white/40 rounded-lg p-2 mb-2">
+                          <p className="text-2xl font-black text-white">{rankings[0].totalPoints}</p>
+                          <p className="text-white/95 text-xs font-bold">POINTS</p>
+                        </div>
+                        <div className="flex justify-center space-x-2 text-xs">
+                          <span className="bg-red-600/90 px-2 py-1 rounded text-white font-bold">{rankings[0].totalKills} K</span>
+                          <span className="bg-blue-600/90 px-2 py-1 rounded text-white font-bold">{rankings[0].gamesPlayed} G</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Socle 1ère - mobile */}
+                  <div className="relative">
+                    <div className="bg-gradient-to-t from-yellow-700 via-yellow-500 to-yellow-400 h-16 w-24 rounded-t-2xl mx-auto border-2 border-yellow-300 flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent"></div>
+                      <span className="text-2xl font-black text-white relative z-10">1</span>
+                    </div>
+                    <div className="bg-gradient-to-b from-yellow-500 to-yellow-600 h-2 w-24 mx-auto rounded-b-lg"></div>
+                  </div>
+                </div>
+
+                {/* 2ème place */}
+                {rankings[1] && (
+                  <div className="text-center transform hover:scale-105 transition-all duration-700 group">
+                    <div className="relative mb-4 group/card">
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-400 to-slate-600 rounded-xl blur-lg opacity-50 group-hover:opacity-90 transition-all duration-500"></div>
+                      <div className="relative bg-gradient-to-br from-slate-300 via-slate-400 to-slate-600 rounded-xl p-4 border-2 border-slate-300">
+                        <div className="absolute -top-3 -right-3 bg-gradient-to-br from-slate-200 to-slate-400 rounded-full p-2">
+                          <Medal className="w-5 h-5 text-slate-700" />
+                        </div>
+                        
+                        <div className="text-center relative z-10">
+                          <div className="bg-white/30 rounded-full p-3 w-14 h-14 mx-auto mb-3 flex items-center justify-center">
+                            <Medal className="w-7 h-7 text-white" />
+                          </div>
+                          <h3 className="text-base font-black text-white mb-2 truncate">{rankings[1].teamName}</h3>
+                          <div className="bg-white/30 rounded-lg p-2 mb-2">
+                            <p className="text-xl font-black text-white">{rankings[1].totalPoints}</p>
+                            <p className="text-white/95 text-xs font-bold">POINTS</p>
+                          </div>
+                          <div className="flex justify-center space-x-2 text-xs">
+                            <span className="bg-red-500/90 px-2 py-1 rounded text-white font-bold">{rankings[1].totalKills} K</span>
+                            <span className="bg-blue-500/90 px-2 py-1 rounded text-white font-bold">{rankings[1].gamesPlayed} G</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="relative">
+                      <div className="bg-gradient-to-t from-slate-700 via-slate-500 to-slate-400 h-14 w-20 rounded-t-2xl mx-auto border-2 border-slate-300 flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent"></div>
+                        <span className="text-xl font-black text-white relative z-10">2</span>
+                      </div>
+                      <div className="bg-gradient-to-b from-slate-500 to-slate-600 h-2 w-20 mx-auto rounded-b-lg"></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3ème place */}
+                {rankings[2] && (
+                  <div className="text-center transform hover:scale-105 transition-all duration-700 group">
+                    <div className="relative mb-4 group/card">
+                      <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-amber-700 rounded-xl blur-lg opacity-50 group-hover:opacity-90 transition-all duration-500"></div>
+                      <div className="relative bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 rounded-xl p-4 border-2 border-amber-400">
+                        <div className="absolute -top-3 -right-3 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full p-2">
+                          <Award className="w-5 h-5 text-amber-800" />
+                        </div>
+                        
+                        <div className="text-center relative z-10">
+                          <div className="bg-white/30 rounded-full p-3 w-14 h-14 mx-auto mb-3 flex items-center justify-center">
+                            <Award className="w-7 h-7 text-white" />
+                          </div>
+                          <h3 className="text-base font-black text-white mb-2 truncate">{rankings[2].teamName}</h3>
+                          <div className="bg-white/30 rounded-lg p-2 mb-2">
+                            <p className="text-xl font-black text-white">{rankings[2].totalPoints}</p>
+                            <p className="text-white/95 text-xs font-bold">POINTS</p>
+                          </div>
+                          <div className="flex justify-center space-x-2 text-xs">
+                            <span className="bg-red-500/90 px-2 py-1 rounded text-white font-bold">{rankings[2].totalKills} K</span>
+                            <span className="bg-blue-500/90 px-2 py-1 rounded text-white font-bold">{rankings[2].gamesPlayed} G</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="relative">
+                      <div className="bg-gradient-to-t from-amber-800 via-amber-600 to-amber-500 h-12 w-18 rounded-t-2xl mx-auto border-2 border-amber-400 flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent"></div>
+                        <span className="text-lg font-black text-white relative z-10">3</span>
+                      </div>
+                      <div className="bg-gradient-to-b from-amber-600 to-amber-700 h-2 w-18 mx-auto rounded-b-lg"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Version desktop : podium en ligne */}
+              <div className="hidden md:flex justify-center items-end space-x-4 lg:space-x-8">
                 {/* 2ème place */}
                 {rankings[1] && (
                   <div className="text-center transform hover:scale-110 transition-all duration-700 hover:-translate-y-4 group">

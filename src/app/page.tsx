@@ -6,41 +6,78 @@ import { Trophy, Users, Calendar, Clock, Star, Shield, Gamepad2, UserPlus, Award
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { getTimeUntilRegistrationEnd, isRegistrationOpen } from '@/lib/utils';
+import { TournamentService } from '@/services/tournamentService';
 
 export default function Home() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isClient, setIsClient] = useState(false);
   const [isResultsAvailable, setIsResultsAvailable] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
     setIsClient(true);
-    const timer = setInterval(() => {
-      setTimeLeft(getTimeUntilRegistrationEnd());
-    }, 1000);
+    
+    // Fonction pour mettre à jour le temps restant
+    const updateTimeLeft = async () => {
+      try {
+        const time = await getTimeUntilRegistrationEnd();
+        setTimeLeft(time);
+      } catch (error) {
+        console.error('Erreur lors du calcul du temps restant:', error);
+      }
+    };
+
+    // Mise à jour initiale
+    updateTimeLeft();
+    
+    // Timer pour mettre à jour toutes les secondes
+    const timer = setInterval(updateTimeLeft, 1000);
 
     return () => clearInterval(timer);
   }, []);
 
-  // Vérifier si les résultats sont disponibles
+  // Vérifier l'ouverture des inscriptions
   useEffect(() => {
-    const checkResultsAvailability = () => {
-      const revealDate = process.env.NEXT_PUBLIC_RESULTS_REVEAL_DATE;
-      if (!revealDate) {
-        setIsResultsAvailable(false);
-        return;
+    const checkRegistrationStatus = async () => {
+      try {
+        const isOpen = await isRegistrationOpen();
+        setRegistrationOpen(isOpen);
+      } catch (error) {
+        console.error('Erreur lors de la vérification des inscriptions:', error);
+        setRegistrationOpen(false);
       }
-
-      const now = new Date();
-      const targetDate = new Date(revealDate);
-      setIsResultsAvailable(now >= targetDate);
     };
 
-    checkResultsAvailability();
-    const interval = setInterval(checkResultsAvailability, 1000);
+    checkRegistrationStatus();
+    // Vérifier toutes les minutes
+    const interval = setInterval(checkRegistrationStatus, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  const registrationOpen = isRegistrationOpen();
+  // Vérifier si les résultats sont disponibles
+  useEffect(() => {
+    const checkResultsAvailability = async () => {
+      try {
+        const activeTournament = await TournamentService.getActiveTournament();
+        const revealDate = process.env.NEXT_PUBLIC_RESULTS_REVEAL_DATE;
+        if (!activeTournament || !activeTournament.date_result || !revealDate) {
+          setIsResultsAvailable(false);
+          return;
+        }
+
+        const now = new Date();
+        const targetDate = new Date(activeTournament.date_result) || new Date(revealDate);
+        setIsResultsAvailable(now >= targetDate);
+      } catch (error) {
+        console.error('Erreur lors de la vérification des résultats:', error);
+        setIsResultsAvailable(false);
+      }
+    };
+
+    checkResultsAvailability();
+    const interval = setInterval(checkResultsAvailability, 60000); // Vérifier toutes les minutes
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
@@ -190,56 +227,61 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            {/* Boutons d'action responsive */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto px-4">
               {registrationOpen ? (
                 <>
                   <Link
                     href="/inscription"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
                   >
-                    <UserPlus className="w-5 h-5" />
-                    Créer une équipe
+                    <UserPlus className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">Créer une équipe</span>
                   </Link>
                   <Link
                     href="/rejoindre"
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
                   >
-                    <Users className="w-5 h-5" />
-                    Rejoindre une équipe
+                    <Users className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">Rejoindre équipe</span>
                   </Link>
                 </>
               ) : (
                 <>
-                  <div className="bg-gray-600 text-gray-300 px-8 py-4 rounded-xl font-semibold text-lg cursor-not-allowed flex items-center justify-center gap-2">
-                    <UserPlus className="w-5 h-5" />
-                    Créer une équipe (Fermé)
+                  <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                    <UserPlus className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">Créer équipe (Fermé)</span>
                   </div>
-                  <div className="bg-gray-600 text-gray-300 px-8 py-4 rounded-xl font-semibold text-lg cursor-not-allowed flex items-center justify-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Rejoindre une équipe (Fermé)
+                  <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                    <Users className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">Rejoindre (Fermé)</span>
                   </div>
                 </>
               )}
               <Link
                 href="/equipes-validees"
-                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
               >
-                <Award className="w-5 h-5" />
-                Équipes inscrites
+                <Award className="w-5 h-5 flex-shrink-0" />
+                <span className="truncate">Équipes inscrites</span>
               </Link>
               <Link
                 href="/regles"
-                className="bg-gray-800 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-gray-700 transition-all duration-200 border border-gray-700 flex items-center justify-center gap-2"
+                className="bg-gray-800 text-white px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:bg-gray-700 transition-all duration-200 border border-gray-700 flex items-center justify-center gap-2"
               >
-                <Shield className="w-5 h-5" />
-                Voir les règles
+                <Shield className="w-5 h-5 flex-shrink-0" />
+                <span className="truncate">Voir les règles</span>
               </Link>
+            </div>
+            
+            {/* Bouton de suivi séparé pour éviter le débordement */}
+            <div className="flex justify-center mt-4">
               <Link
                 href="/suivi"
-                className="bg-gradient-to-r from-yellow-600 to-orange-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                className="bg-gradient-to-r from-yellow-600 to-orange-600 text-white px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2 max-w-xs"
               >
-                <Trophy className="w-5 h-5" />
-                Suivre une équipe
+                <Trophy className="w-5 h-5 flex-shrink-0" />
+                <span className="truncate">Suivre une équipe</span>
               </Link>
             </div>
           </div>

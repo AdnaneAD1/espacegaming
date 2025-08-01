@@ -92,16 +92,17 @@ export default function VideoUpload({
             {/* Zone de drop */}
             {!uploadedUrl && !preview && (
                 <div
-                    className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${dragActive
+                    className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${dragActive
                         ? 'border-blue-400 bg-blue-500/10'
                         : error
                             ? 'border-red-400 bg-red-500/10'
-                            : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
+                            : 'border-gray-600 bg-gray-800/50 hover:border-gray-500 hover:bg-gray-700/50'
                         }`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
+                    onClick={openFileDialog}
                 >
                     <input
                         ref={fileInputRef}
@@ -122,14 +123,8 @@ export default function VideoUpload({
                             <h3 className="text-lg font-semibold text-white">
                                 Vidéo de device check {required && <span className="text-red-400">*</span>}
                             </h3>
-                            <p className="text-gray-400 text-sm">
-                                Glissez-déposez votre vidéo ici ou{' '}
-                                <button
-                                    onClick={openFileDialog}
-                                    className="text-blue-400 hover:text-blue-300 font-medium underline"
-                                >
-                                    parcourez vos fichiers
-                                </button>
+                            <p className="text-gray-300">
+                                Cliquez ici ou glissez-déposez votre vidéo
                             </p>
                             <p className="text-gray-500 text-xs">
                                 Formats supportés : MP4, MOV, AVI, MKV • Taille max : {maxSize}MB

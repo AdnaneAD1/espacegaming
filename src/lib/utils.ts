@@ -123,13 +123,94 @@ export function generateSlug(text: string): string {
 }
 
 // Fonction pour vérifier si les inscriptions sont ouvertes
-export function isRegistrationOpen(): boolean {
+// Prend en compte le deadline_register du tournoi actif ou fallback sur l'ancienne méthode
+export async function isRegistrationOpen(): Promise<boolean> {
+    try {
+        // Importer dynamiquement pour éviter les problèmes de dépendances circulaires
+        const { TournamentService } = await import('@/services/tournamentService');
+        
+        const activeTournament = await TournamentService.getActiveTournament();
+        
+        if (activeTournament && activeTournament.deadline_register) {
+            // Utiliser la deadline du tournoi actif
+            return new Date() < activeTournament.deadline_register;
+        }
+        
+        // Fallback sur l'ancienne méthode si pas de tournoi actif ou pas de deadline
+        const endDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_END_DATE || '');
+        return new Date() < endDate;
+    } catch (error) {
+        console.error('Erreur lors de la vérification des inscriptions:', error);
+        // Fallback sur l'ancienne méthode en cas d'erreur
+        const endDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_END_DATE || '');
+        return new Date() < endDate;
+    }
+}
+
+// Version synchrone pour la compatibilité (utilise l'ancienne méthode)
+export function isRegistrationOpenSync(): boolean {
     const endDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_END_DATE || '');
     return new Date() < endDate;
 }
 
 // Fonction pour obtenir le temps restant avant la fin des inscriptions
-export function getTimeUntilRegistrationEnd(): {
+// Prend en compte le deadline_register du tournoi actif ou fallback sur l'ancienne méthode
+export async function getTimeUntilRegistrationEnd(): Promise<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+}> {
+    try {
+        // Importer dynamiquement pour éviter les problèmes de dépendances circulaires
+        const { TournamentService } = await import('@/services/tournamentService');
+        
+        const activeTournament = await TournamentService.getActiveTournament();
+        let endDate: Date;
+        
+        if (activeTournament && activeTournament.deadline_register) {
+            // Utiliser la deadline du tournoi actif
+            endDate = activeTournament.deadline_register;
+        } else {
+            // Fallback sur l'ancienne méthode
+            endDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_END_DATE || '');
+        }
+        
+        const now = new Date();
+        const diffInMs = endDate.getTime() - now.getTime();
+
+        if (diffInMs <= 0) {
+            return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+        }
+
+        const days = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diffInMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diffInMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diffInMs % (1000 * 60)) / 1000);
+
+        return { days, hours, minutes, seconds };
+    } catch (error) {
+        console.error('Erreur lors du calcul du temps restant:', error);
+        // Fallback sur l'ancienne méthode en cas d'erreur
+        const endDate = new Date(process.env.NEXT_PUBLIC_REGISTRATION_END_DATE || '');
+        const now = new Date();
+        const diffInMs = endDate.getTime() - now.getTime();
+
+        if (diffInMs <= 0) {
+            return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+        }
+
+        const days = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diffInMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diffInMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diffInMs % (1000 * 60)) / 1000);
+
+        return { days, hours, minutes, seconds };
+    }
+}
+
+// Version synchrone pour la compatibilité (utilise l'ancienne méthode)
+export function getTimeUntilRegistrationEndSync(): {
     days: number;
     hours: number;
     minutes: number;

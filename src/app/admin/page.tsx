@@ -18,81 +18,189 @@ import {
     Trash2,
     X,
     Crown,
-    Trophy
+    FileText,
+    Database,
+    Check
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore'
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Team } from '@/types'
+import { Tournament } from '@/types/tournament-multi'
 import { ComponentType } from 'react';
 import { useRouter } from 'next/navigation'
+import TournamentManagement from '@/components/admin/TournamentManagement'
 import TournamentManager from '@/components/admin/TournamentManager'
 
 interface AdminStats {
     totalTeams: number
     validatedTeams: number
     pendingTeams: number
+    rejectedTeams: number
     totalPlayers: number
     validatedPlayers: number
     pendingPlayers: number
+    rejectedPlayers: number
 }
 
 export default function AdminDashboard() {
     const { user, logout } = useAuth()
     const router = useRouter()
-    const [stats, setStats] = useState<AdminStats>({
-        totalTeams: 0,
-        validatedTeams: 0,
-        pendingTeams: 0,
-        totalPlayers: 0,
-        validatedPlayers: 0,
-        pendingPlayers: 0
-    })
     const [teams, setTeams] = useState<Team[]>([])
-    const [selectedTab, setSelectedTab] = useState<'dashboard' | 'teams' | 'players' | 'tournament' | 'settings'>('dashboard')
+    const [dashboardTeams, setDashboardTeams] = useState<Team[]>([])
+    const [tournaments, setTournaments] = useState<Tournament[]>([])
+    const [selectedTab, setSelectedTab] = useState<'dashboard' | 'teams' | 'players' | 'tournaments' | 'tournament-manage' | 'settings'>('dashboard')
     const [loading, setLoading] = useState(true)
     const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
     const [showTeamDetails, setShowTeamDetails] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [teamToDelete, setTeamToDelete] = useState<string | null>(null)
     const [fixingStatus, setFixingStatus] = useState(false)
+    const [selectedTournamentForTeams, setSelectedTournamentForTeams] = useState<string>('all')
+    const [selectedTournamentForDashboard, setSelectedTournamentForDashboard] = useState<string>('all')
+    const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null)
+    const [managingTournamentId, setManagingTournamentId] = useState<string | null>(null)
 
+    // Fonction pour naviguer vers la gestion d'un tournoi spécifique
+    const handleManageTournament = (tournamentId: string) => {
+        setManagingTournamentId(tournamentId)
+        setSelectedTab('tournament-manage')
+    }
+
+    // Fonction pour revenir à la liste des tournois
+    const handleBackToTournamentList = () => {
+        setManagingTournamentId(null)
+        setSelectedTab('tournaments')
+    }
+
+    // Calculer les statistiques pour le dashboard basées sur le tournoi sélectionné
+    const calculateDashboardStats = (selectedTournament: string, teamsData: Team[]): AdminStats => {
+        // Utiliser les équipes filtrées selon le tournoi sélectionné
+        const relevantTeams = selectedTournament === 'all' ? teamsData : teamsData
+        
+        const totalTeams = relevantTeams.length
+        const validatedTeams = relevantTeams.filter(team => team.status === 'validated').length
+        const pendingTeams = relevantTeams.filter(team => team.status === 'incomplete' || team.status === 'complete').length
+        const rejectedTeams = relevantTeams.filter(team => team.status === 'rejected').length
+        
+        const allPlayers = relevantTeams.flatMap(team => team.players)
+        const totalPlayers = allPlayers.length
+        const validatedPlayers = allPlayers.filter(player => player.status === 'validated').length
+        const pendingPlayers = allPlayers.filter(player => player.status === 'pending').length
+        const rejectedPlayers = allPlayers.filter(player => player.status === 'rejected').length
+        
+        return {
+            totalTeams,
+            validatedTeams,
+            pendingTeams,
+            rejectedTeams,
+            totalPlayers,
+            validatedPlayers,
+            pendingPlayers,
+            rejectedPlayers
+        }
+    }
+
+    // Charger les tournois
     useEffect(() => {
-        const unsubscribe = onSnapshot(
-            query(collection(db, 'teams'), orderBy('createdAt', 'desc')),
-            (snapshot) => {
-                const teamsData = snapshot.docs.map(doc => ({
+        const loadTournaments = async () => {
+            try {
+                const tournamentsSnapshot = await getDocs(
+                    query(collection(db, 'tournaments'), orderBy('createdAt', 'desc'))
+                )
+                const tournamentsData = tournamentsSnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
-                })) as Team[]
+                })) as Tournament[]
+                setTournaments(tournamentsData)
 
-                setTeams(teamsData)
-
-                // Calculer les statistiques
-                const totalTeams = teamsData.length
-                const validatedTeams = teamsData.filter(team => team.status === 'validated').length
-                const pendingTeams = teamsData.filter(team => team.status === 'incomplete' || team.status === 'complete').length
-
-                const allPlayers = teamsData.flatMap(team => team.players)
-                const totalPlayers = allPlayers.length
-                const validatedPlayers = allPlayers.filter(player => player.status === 'validated').length
-                const pendingPlayers = allPlayers.filter(player => player.status === 'pending').length
-
-                setStats({
-                    totalTeams,
-                    validatedTeams,
-                    pendingTeams,
-                    totalPlayers,
-                    validatedPlayers,
-                    pendingPlayers
-                })
-
-                setLoading(false)
+                // Trouver le tournoi actif et le sélectionner par défaut
+                const activeTournament = tournamentsData.find(t => t.status === 'active')
+                if (activeTournament) {
+                    setActiveTournamentId(activeTournament.id)
+                    setSelectedTournamentForTeams(activeTournament.id)
+                    setSelectedTournamentForDashboard(activeTournament.id)
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des tournois:', error)
             }
-        )
+        }
+        loadTournaments()
+    }, [])
+
+    // Charger les équipes selon le tournoi sélectionné
+    useEffect(() => {
+        let unsubscribe: () => void
+
+        if (selectedTournamentForTeams === 'all') {
+            // Charger toutes les équipes (ancien système)
+            unsubscribe = onSnapshot(
+                query(collection(db, 'teams'), orderBy('createdAt', 'desc')),
+                (snapshot) => {
+                    const teamsData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    })) as Team[]
+                    setTeams(teamsData)
+                    setLoading(false)
+                }
+            )
+        } else {
+            // Charger les équipes d'un tournoi spécifique
+            unsubscribe = onSnapshot(
+                query(
+                    collection(db, 'tournaments', selectedTournamentForTeams, 'teams'),
+                    orderBy('createdAt', 'desc')
+                ),
+                (snapshot) => {
+                    const teamsData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    })) as Team[]
+                    setTeams(teamsData)
+                    setLoading(false)
+                }
+            )
+        }
 
         return () => unsubscribe()
-    }, [])
+    }, [selectedTournamentForTeams])
+
+    // Charger les équipes pour le Dashboard selon le tournoi sélectionné
+    useEffect(() => {
+        let unsubscribe: () => void
+
+        if (selectedTournamentForDashboard === 'all') {
+            // Charger toutes les équipes (ancien système)
+            unsubscribe = onSnapshot(
+                query(collection(db, 'teams'), orderBy('createdAt', 'desc')),
+                (snapshot) => {
+                    const teamsData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    })) as Team[]
+                    setDashboardTeams(teamsData)
+                }
+            )
+        } else {
+            // Charger les équipes d'un tournoi spécifique
+            unsubscribe = onSnapshot(
+                query(
+                    collection(db, 'tournaments', selectedTournamentForDashboard, 'teams'),
+                    orderBy('createdAt', 'desc')
+                ),
+                (snapshot) => {
+                    const teamsData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    })) as Team[]
+                    setDashboardTeams(teamsData)
+                }
+            )
+        }
+
+        return () => unsubscribe()
+    }, [selectedTournamentForDashboard])
 
     const handleLogout = async () => {
         const result = await logout()
@@ -106,7 +214,15 @@ export default function AdminDashboard() {
 
     const validatePlayer = async (teamId: string, playerId: string) => {
         try {
-            const teamRef = doc(db, 'teams', teamId)
+            // Vérifier qu'un tournoi actif existe
+            if (!activeTournamentId) {
+                toast.error('Aucun tournoi actif disponible pour la validation')
+                return
+            }
+
+            // Utiliser la référence du tournoi actif
+            const teamRef = doc(db, 'tournaments', activeTournamentId, 'teams', teamId)
+            const tournamentRef = doc(db, 'tournaments', activeTournamentId)
             const team = teams.find(t => t.id === teamId)
 
             if (team) {
@@ -128,6 +244,7 @@ export default function AdminDashboard() {
                 const totalPlayers = updatedPlayers.length
 
                 let teamStatus: 'incomplete' | 'complete' | 'validated'
+                const wasTeamValidatedBefore = team.status === 'validated'
 
                 if (validatedCount >= 3) {
                     teamStatus = 'validated'
@@ -137,6 +254,7 @@ export default function AdminDashboard() {
                     teamStatus = 'incomplete'
                 }
 
+                // Mettre à jour l'équipe
                 await updateDoc(teamRef, {
                     players: updatedPlayers,
                     captain: updatedCaptain,
@@ -144,7 +262,29 @@ export default function AdminDashboard() {
                     updatedAt: new Date()
                 })
 
-                toast.success('Joueur validé avec succès')
+                // Si l'équipe vient d'être validée (nouveau statut 'validated' et n'était pas validée avant)
+                if (teamStatus === 'validated' && !wasTeamValidatedBefore) {
+                    // Mettre à jour les statistiques du tournoi actif
+                    const activeTournament = tournaments.find(t => t.id === activeTournamentId)
+                    if (activeTournament) {
+                        const updatedStats = {
+                            ...activeTournament.stats,
+                            totalTeams: activeTournament.stats.totalTeams + 1,
+                            totalGames: 3 // Fixer le nombre de parties à 3 comme demandé
+                        }
+
+                        await updateDoc(tournamentRef, {
+                            stats: updatedStats,
+                            updatedAt: new Date()
+                        })
+
+                        toast.success('Équipe validée avec succès ! Statistiques du tournoi mises à jour (3 parties)')
+                    } else {
+                        toast.success('Joueur validé avec succès dans le tournoi actif')
+                    }
+                } else {
+                    toast.success('Joueur validé avec succès dans le tournoi actif')
+                }
             }
         } catch (error) {
             console.error('Erreur lors de la validation:', error)
@@ -154,7 +294,14 @@ export default function AdminDashboard() {
 
     const rejectPlayer = async (teamId: string, playerId: string) => {
         try {
-            const teamRef = doc(db, 'teams', teamId)
+            // Vérifier qu'un tournoi actif existe
+            if (!activeTournamentId) {
+                toast.error('Aucun tournoi actif disponible pour le rejet')
+                return
+            }
+
+            // Utiliser la référence du tournoi actif
+            const teamRef = doc(db, 'tournaments', activeTournamentId, 'teams', teamId)
             const team = teams.find(t => t.id === teamId)
 
             if (team) {
@@ -188,9 +335,9 @@ export default function AdminDashboard() {
                 });
 
                 if (teamStatus === 'rejected') {
-                    toast.success('L\'équipe a été refusée (3 joueurs ou plus rejetés)');
+                    toast.success('L\'équipe a été refusée (3 joueurs ou plus rejetés) dans le tournoi actif');
                 } else {
-                    toast.success('Joueur rejeté');
+                    toast.success('Joueur rejeté dans le tournoi actif');
                 }
             }
         } catch (error) {
@@ -213,20 +360,39 @@ export default function AdminDashboard() {
         if (!teamToDelete) return
 
         try {
-            await fetch('/api/admin/teams/delete', {
+            // Préparer les données à envoyer
+            const deleteData: { teamId: string; tournamentId?: string } = {
+                teamId: teamToDelete
+            }
+
+            // Ajouter le tournamentId si on n'est pas dans "all" (ancien système)
+            if (selectedTournamentForTeams !== 'all') {
+                deleteData.tournamentId = selectedTournamentForTeams
+            }
+
+            const response = await fetch('/api/admin/teams/delete', {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ teamId: teamToDelete }),
+                body: JSON.stringify(deleteData),
             })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Erreur lors de la suppression')
+            }
 
             toast.success('Équipe supprimée avec succès')
             setShowDeleteConfirm(false)
             setTeamToDelete(null)
         } catch (error) {
             console.error('Erreur lors de la suppression:', error)
-            toast.error('Erreur lors de la suppression')
+            if (error instanceof Error) {
+                toast.error(error.message)
+            } else {
+                toast.error('Erreur lors de la suppression')
+            }
         }
     }
 
@@ -261,7 +427,7 @@ export default function AdminDashboard() {
     }
 
 
-const StatCard = ({ icon: Icon, title, value, color }: {
+    const StatCard = ({ icon: Icon, title, value, color }: {
         icon: ComponentType<{ className?: string }>
         title: string
         value: number
@@ -294,164 +460,314 @@ const StatCard = ({ icon: Icon, title, value, color }: {
         <AdminGuard>
             <div className="min-h-screen bg-gray-50">
                 {/* Header */}
-                <header className="bg-white shadow-sm border-b border-gray-200">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 space-y-4 sm:space-y-0">
-                            <div className="flex items-center">
-                                <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mr-3" />
-                                <div>
-                                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Administration</h1>
-                                    <p className="text-xs sm:text-sm text-gray-500">Tournoi Battle Royale CODM</p>
+                <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+                    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 sm:py-6 space-y-3 sm:space-y-0">
+                            <div className="flex items-center w-full sm:w-auto">
+                                <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mr-2 sm:mr-3 flex-shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">Administration</h1>
+                                    <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Tournoi Battle Royale CODM</p>
                                 </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-                                <span className="text-xs sm:text-sm text-gray-600 truncate max-w-full sm:max-w-none">
-                                    Connecté: {user?.email}
-                                </span>
-                                <button
-                                    onClick={handleLogout}
-                                    className="flex items-center px-3 py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                                >
-                                    <LogOut className="h-4 w-4 mr-1" />
-                                    Déconnexion
-                                </button>
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+                                <div className="flex items-center justify-between sm:justify-start">
+                                    <span className="text-xs sm:text-sm text-gray-600 truncate max-w-[200px] sm:max-w-none">
+                                        {user?.email}
+                                    </span>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="flex items-center px-3 py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors ml-2 sm:ml-0"
+                                    >
+                                        <LogOut className="h-4 w-4 mr-1" />
+                                        <span className="hidden xs:inline">Déconnexion</span>
+                                        <span className="xs:hidden">Exit</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </header>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+                <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8">
                     {/* Navigation */}
-                    <nav className="mb-6 sm:mb-8">
+                    <nav className="mb-4 sm:mb-6 lg:mb-8">
                         {/* Navigation Desktop */}
-                        <div className="hidden sm:flex space-x-2 lg:space-x-8">
+                        <div className="hidden md:flex space-x-1 lg:space-x-4 xl:space-x-8 bg-white rounded-xl p-2 shadow-sm border border-gray-200">
                             {[
                                 { id: 'dashboard', label: 'Tableau de bord', icon: Users },
                                 { id: 'teams', label: 'Équipes', icon: Users },
                                 { id: 'players', label: 'Joueurs', icon: UserCheck },
-                                { id: 'tournament', label: 'Tournoi', icon: Trophy },
-                                { id: 'settings', label: 'Paramètres', icon: Settings }
+                                { id: 'tournaments', label: 'Tournois', icon: Crown }
                             ].map(({ id, label, icon: Icon }) => (
                                 <button
                                     key={id}
-                                    onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'tournament' | 'settings')}
-                                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${selectedTab === id
-                                        ? 'bg-blue-100 text-blue-700'
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'tournaments')}
+                                    className={`flex items-center px-3 lg:px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${selectedTab === id
+                                        ? 'bg-blue-600 text-white shadow-md transform scale-105'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:scale-102'
                                         }`}
                                 >
-                                    <Icon className="h-4 w-4 mr-2" />
-                                    <span className="hidden lg:inline">{label}</span>
-                                    <span className="lg:hidden">{label.split(' ')[0]}</span>
+                                    <Icon className="h-4 w-4 mr-2 flex-shrink-0" />
+                                    <span className="hidden lg:inline whitespace-nowrap">{label}</span>
+                                    <span className="lg:hidden whitespace-nowrap">{label.split(' ')[0]}</span>
                                 </button>
                             ))}
                         </div>
 
-                        {/* Navigation Mobile */}
-                        <div className="sm:hidden">
-                            <div className="grid grid-cols-2 gap-2">
+                        {/* Navigation Tablet */}
+                        <div className="hidden sm:flex md:hidden bg-white rounded-xl p-2 shadow-sm border border-gray-200 overflow-x-auto">
+                            <div className="flex space-x-2 min-w-max">
                                 {[
-                                    { id: 'dashboard', label: 'Tableau', shortLabel: 'Stats', icon: Users },
-                                    { id: 'teams', label: 'Équipes', shortLabel: 'Teams', icon: Users },
-                                    { id: 'players', label: 'Joueurs', shortLabel: 'Players', icon: UserCheck },
-                                    { id: 'tournament', label: 'Tournoi', shortLabel: 'Tournoi', icon: Trophy },
-                                    { id: 'settings', label: 'Paramètres', shortLabel: 'Config', icon: Settings }
-                                ].map(({ id, label, shortLabel, icon: Icon }) => (
+                                    { id: 'dashboard', label: 'Dashboard', icon: Users },
+                                    { id: 'teams', label: 'Équipes', icon: Users },
+                                    { id: 'players', label: 'Joueurs', icon: UserCheck },
+                                    { id: 'tournaments', label: 'Tournois', icon: Crown }
+                                ].map(({ id, label, icon: Icon }) => (
                                     <button
                                         key={id}
-                                        onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'tournament' | 'settings')}
-                                        className={`flex flex-col items-center justify-center p-3 text-xs font-medium rounded-lg transition-colors ${selectedTab === id
-                                            ? 'bg-blue-100 text-blue-700'
+                                        onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'tournaments')}
+                                        className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${selectedTab === id
+                                            ? 'bg-blue-600 text-white shadow-md'
                                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                             }`}
                                     >
-                                        <Icon className="h-5 w-5 mb-1" />
-                                        <span>{shortLabel || label}</span>
+                                        <Icon className="h-4 w-4 mr-2" />
+                                        <span>{label}</span>
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        {/* Navigation Mobile */}
+                        <div className="sm:hidden bg-white rounded-xl p-3 shadow-sm border border-gray-200">
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { id: 'dashboard', label: 'Stats', icon: Users },
+                                    { id: 'teams', label: 'Équipes', icon: Users },
+                                    { id: 'players', label: 'Joueurs', icon: UserCheck }
+                                ].map(({ id, label, icon: Icon }) => (
+                                    <button
+                                        key={id}
+                                        onClick={() => setSelectedTab(id as 'dashboard' | 'teams' | 'players' | 'tournaments')}
+                                        className={`flex flex-col items-center justify-center p-3 text-xs font-medium rounded-lg transition-all duration-200 ${selectedTab === id
+                                            ? 'bg-blue-600 text-white shadow-md transform scale-105'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:scale-95'
+                                            }`}
+                                    >
+                                        <Icon className="h-5 w-5 mb-1.5" />
+                                        <span className="leading-tight">{label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            {/* Deuxième ligne pour mobile */}
+                            <div className="flex justify-center mt-2">
+                                <button
+                                    onClick={() => setSelectedTab('tournaments')}
+                                    className={`flex flex-col items-center justify-center p-3 text-xs font-medium rounded-lg transition-all duration-200 ${selectedTab === 'tournaments'
+                                        ? 'bg-blue-600 text-white shadow-md transform scale-105'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:scale-95'
+                                        }`}
+                                >
+                                    <Crown className="h-5 w-5 mb-1.5" />
+                                    <span className="leading-tight">Tournois</span>
+                                </button>
                             </div>
                         </div>
                     </nav>
 
                     {/* Dashboard */}
                     {selectedTab === 'dashboard' && (
-                        <div className="space-y-6 sm:space-y-8">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                                <StatCard
-                                    icon={Users}
-                                    title="Total Équipes"
-                                    value={stats.totalTeams}
-                                    color="bg-blue-500"
-                                />
-                                <StatCard
-                                    icon={CheckCircle}
-                                    title="Équipes Validées"
-                                    value={stats.validatedTeams}
-                                    color="bg-green-500"
-                                />
-                                <StatCard
-                                    icon={Clock}
-                                    title="Équipes en Attente"
-                                    value={stats.pendingTeams}
-                                    color="bg-yellow-500"
-                                />
-                                <StatCard
-                                    icon={Users}
-                                    title="Total Joueurs"
-                                    value={stats.totalPlayers}
-                                    color="bg-purple-500"
-                                />
-                                <StatCard
-                                    icon={UserCheck}
-                                    title="Joueurs Validés"
-                                    value={stats.validatedPlayers}
-                                    color="bg-green-500"
-                                />
-                                <StatCard
-                                    icon={AlertTriangle}
-                                    title="Joueurs en Attente"
-                                    value={stats.pendingPlayers}
-                                    color="bg-orange-500"
-                                />
+                        <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+                            {/* Sélecteur de tournoi pour le dashboard */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6">
+                                <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Statistiques du tournoi</h3>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                        <label htmlFor="tournament-select-dashboard" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                            Tournoi :
+                                        </label>
+                                        <select
+                                            id="tournament-select-dashboard"
+                                            value={selectedTournamentForDashboard}
+                                            onChange={(e) => setSelectedTournamentForDashboard(e.target.value)}
+                                            className="w-full sm:w-auto min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 truncate"
+                                        >
+                                            <option value="all">Toutes les données (ancien système)</option>
+                                            {tournaments.map((tournament) => (
+                                                <option key={tournament.id} value={tournament.id}>
+                                                    {tournament.name} ({tournament.status === 'active' ? 'Actif' : tournament.status === 'completed' ? 'Terminé' : 'Brouillon'})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Cartes statistiques responsive */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+                                <div className="col-span-2 sm:col-span-3 lg:col-span-6">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+                                        <StatCard
+                                            icon={Users}
+                                            title="Total Équipes"
+                                            value={calculateDashboardStats(selectedTournamentForDashboard, dashboardTeams).totalTeams}
+                                            color="bg-blue-500"
+                                        />
+                                        <StatCard
+                                            icon={CheckCircle}
+                                            title="Équipes Validées"
+                                            value={calculateDashboardStats(selectedTournamentForDashboard, dashboardTeams).validatedTeams}
+                                            color="bg-green-500"
+                                        />
+                                        <StatCard
+                                            icon={Clock}
+                                            title="Équipes en Attente"
+                                            value={calculateDashboardStats(selectedTournamentForDashboard, dashboardTeams).pendingTeams}
+                                            color="bg-yellow-500"
+                                        />
+                                        <StatCard
+                                            icon={Users}
+                                            title="Total Joueurs"
+                                            value={calculateDashboardStats(selectedTournamentForDashboard, dashboardTeams).totalPlayers}
+                                            color="bg-purple-500"
+                                        />
+                                        <StatCard
+                                            icon={UserCheck}
+                                            title="Joueurs Validés"
+                                            value={calculateDashboardStats(selectedTournamentForDashboard, dashboardTeams).validatedPlayers}
+                                            color="bg-green-500"
+                                        />
+                                        <StatCard
+                                            icon={AlertTriangle}
+                                            title="Joueurs en Attente"
+                                            value={calculateDashboardStats(selectedTournamentForDashboard, dashboardTeams).pendingPlayers}
+                                            color="bg-orange-500"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Actions rapides */}
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Actions rapides</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                            {/* Actions rapides - Version responsive */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6">
+                                <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Actions rapides</h3>
+                                <div className="text-xs sm:text-sm text-gray-600 mb-4 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                                    {selectedTournamentForDashboard === 'all' 
+                                        ? '📈 Actions sur toutes les données (ancien système)'
+                                        : `🏆 Actions sur le tournoi : ${tournaments.find(t => t.id === selectedTournamentForDashboard)?.name || 'Tournoi sélectionné'}`
+                                    }
+                                </div>
+                                
+                                {/* Version mobile - cartes empilées */}
+                                <div className="sm:hidden space-y-2">
                                     <button
-                                        onClick={() => window.open('/api/admin/export?format=csv', '_blank')}
-                                        className="flex items-center justify-center px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm sm:text-base"
+                                        onClick={() => {
+                                            const exportUrl = selectedTournamentForDashboard === 'all' 
+                                                ? '/api/admin/export?format=csv'
+                                                : `/api/admin/export?format=csv&tournament=${selectedTournamentForDashboard}`
+                                            window.open(exportUrl, '_blank')
+                                        }}
+                                        className="w-full flex items-center justify-center px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 active:scale-95 transition-all duration-200 text-sm font-medium"
                                     >
-                                        <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                                        <span className="hidden sm:inline">Exporter </span>CSV
+                                        <Download className="h-4 w-4 mr-2 flex-shrink-0" />
+                                        Exporter CSV
                                     </button>
                                     <button
-                                        onClick={() => window.open('/api/admin/export?format=pdf', '_blank')}
-                                        className="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm sm:text-base"
+                                        onClick={() => {
+                                            const exportUrl = selectedTournamentForDashboard === 'all' 
+                                                ? '/api/admin/export?format=pdf'
+                                                : `/api/admin/export?format=pdf&tournament=${selectedTournamentForDashboard}`
+                                            window.open(exportUrl, '_blank')
+                                        }}
+                                        className="w-full flex items-center justify-center px-4 py-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:scale-95 transition-all duration-200 text-sm font-medium"
                                     >
-                                        <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                                        <span className="hidden sm:inline">Exporter </span>PDF (validés)
+                                        <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+                                        Exporter PDF
                                     </button>
                                     <button
-                                        onClick={() => window.open('/api/admin/export?format=json', '_blank')}
-                                        className="flex items-center justify-center px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm sm:text-base"
+                                        onClick={() => {
+                                            const exportUrl = selectedTournamentForDashboard === 'all' 
+                                                ? '/api/admin/export?format=json'
+                                                : `/api/admin/export?format=json&tournament=${selectedTournamentForDashboard}`
+                                            window.open(exportUrl, '_blank')
+                                        }}
+                                        className="w-full flex items-center justify-center px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:scale-95 transition-all duration-200 text-sm font-medium"
                                     >
-                                        <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                                        <span className="hidden sm:inline">Exporter </span>JSON
+                                        <Database className="h-4 w-4 mr-2 flex-shrink-0" />
+                                        Exporter JSON
+                                    </button>
+
+                                </div>
+                                
+                                {/* Version tablette/desktop - grille */}
+                                <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                                    <button
+                                        onClick={() => {
+                                            const exportUrl = selectedTournamentForDashboard === 'all' 
+                                                ? '/api/admin/export?format=csv'
+                                                : `/api/admin/export?format=csv&tournament=${selectedTournamentForDashboard}`
+                                            window.open(exportUrl, '_blank')
+                                        }}
+                                        className="flex flex-col sm:flex-row items-center justify-center px-3 py-3 sm:px-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 active:scale-95 transition-all duration-200 text-xs sm:text-sm font-medium"
+                                    >
+                                        <Download className="h-5 w-5 sm:h-4 sm:w-4 mb-1 sm:mb-0 sm:mr-2 flex-shrink-0" />
+                                        <span className="text-center leading-tight">
+                                            <span className="block sm:hidden">CSV</span>
+                                            <span className="hidden sm:inline">Export CSV</span>
+                                        </span>
                                     </button>
                                     <button
-                                        onClick={fixTeamStatus}
-                                        disabled={fixingStatus}
-                                        className="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={() => {
+                                            const exportUrl = selectedTournamentForDashboard === 'all' 
+                                                ? '/api/admin/export?format=pdf'
+                                                : `/api/admin/export?format=pdf&tournament=${selectedTournamentForDashboard}`
+                                            window.open(exportUrl, '_blank')
+                                        }}
+                                        className="flex flex-col sm:flex-row items-center justify-center px-3 py-3 sm:px-4 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 active:scale-95 transition-all duration-200 text-xs sm:text-sm font-medium"
                                     >
-                                        <Settings className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                                        {fixingStatus ? 'Correction...' : <span className="hidden sm:inline">Corriger </span>}
-                                        {!fixingStatus && 'Statuts'}
+                                        <Download className="h-5 w-5 sm:h-4 sm:w-4 mb-1 sm:mb-0 sm:mr-2 flex-shrink-0" />
+                                        <span className="text-center leading-tight">
+                                            <span className="block sm:hidden">PDF</span>
+                                            <span className="hidden sm:inline">Export PDF</span>
+                                        </span>
                                     </button>
-                                    <button className="flex items-center justify-center px-4 py-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors text-sm sm:text-base">
-                                        <XCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                                        Fermer inscriptions
+                                    <button
+                                        onClick={() => {
+                                            const exportUrl = selectedTournamentForDashboard === 'all' 
+                                                ? '/api/admin/export?format=json'
+                                                : `/api/admin/export?format=json&tournament=${selectedTournamentForDashboard}`
+                                            window.open(exportUrl, '_blank')
+                                        }}
+                                        className="flex flex-col sm:flex-row items-center justify-center px-3 py-3 sm:px-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:scale-95 transition-all duration-200 text-xs sm:text-sm font-medium"
+                                    >
+                                        <Download className="h-5 w-5 sm:h-4 sm:w-4 mb-1 sm:mb-0 sm:mr-2 flex-shrink-0" />
+                                        <span className="text-center leading-tight">
+                                            <span className="block sm:hidden">JSON</span>
+                                            <span className="hidden sm:inline">Export JSON</span>
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (selectedTournamentForDashboard === 'all') {
+                                                fixTeamStatus()
+                                            } else {
+                                                alert('Correction des statuts disponible uniquement pour l\'ancien système ("Toutes les données")')
+                                            }
+                                        }}
+                                        disabled={fixingStatus || selectedTournamentForDashboard !== 'all'}
+                                        className="flex flex-col sm:flex-row items-center justify-center px-3 py-3 sm:px-4 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 active:scale-95 transition-all duration-200 text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                    >
+                                        <Settings className="h-5 w-5 sm:h-4 sm:w-4 mb-1 sm:mb-0 sm:mr-2 flex-shrink-0" />
+                                        <span className="text-center leading-tight">
+                                            {fixingStatus ? (
+                                                <span className="block">Correction...</span>
+                                            ) : (
+                                                <>
+                                                    <span className="block sm:hidden">Statuts</span>
+                                                    <span className="hidden sm:inline">Corriger Statuts</span>
+                                                </>
+                                            )}
+                                        </span>
                                     </button>
                                 </div>
                             </div>
@@ -461,8 +777,28 @@ const StatCard = ({ icon: Icon, title, value, color }: {
                     {/* Liste des équipes */}
                     {selectedTab === 'teams' && (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                            <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-                                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Gestion des équipes</h3>
+                            <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-b border-gray-200">
+                                <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Gestion des équipes</h3>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                        <label htmlFor="tournament-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                            Tournoi :
+                                        </label>
+                                        <select
+                                            id="tournament-select"
+                                            value={selectedTournamentForTeams}
+                                            onChange={(e) => setSelectedTournamentForTeams(e.target.value)}
+                                            className="w-full sm:w-auto min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 truncate"
+                                        >
+                                            <option value="all">Toutes les équipes (ancien système)</option>
+                                            {tournaments.map((tournament) => (
+                                                <option key={tournament.id} value={tournament.id}>
+                                                    {tournament.name} ({tournament.status === 'active' ? 'Actif' : tournament.status === 'completed' ? 'Terminé' : 'Brouillon'})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Version Desktop */}
@@ -548,117 +884,256 @@ const StatCard = ({ icon: Icon, title, value, color }: {
                                 </table>
                             </div>
 
-                            {/* Version Mobile/Tablet */}
-                            <div className="lg:hidden">
-                                <div className="divide-y divide-gray-200">
+                            {/* Version Mobile/Tablet - Cartes modernes */}
+                            <div className="lg:hidden p-3 sm:p-4">
+                                <div className="space-y-3 sm:space-y-4">
                                     {teams.map((team) => (
-                                        <div key={team.id} className="p-4 sm:p-6">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div className="flex-1">
-                                                    <h4 className="text-sm sm:text-base font-medium text-gray-900">{team.name}</h4>
-                                                    <p className="text-xs sm:text-sm text-gray-500">Code: {team.code}</p>
+                                        <div key={team.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:border-gray-300 transition-all duration-200">
+                                            {/* En-tête de la carte */}
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{team.name}</h4>
+                                                    <p className="text-sm text-gray-600 mt-1">
+                                                        <span className="inline-flex items-center">
+                                                            <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                                            Code: {team.code}
+                                                        </span>
+                                                    </p>
                                                 </div>
-                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-2 ${team.status === 'validated'
-                                                    ? 'bg-green-100 text-green-800'
+                                                <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ml-3 whitespace-nowrap ${team.status === 'validated'
+                                                    ? 'bg-green-100 text-green-800 border border-green-200'
                                                     : team.status === 'complete'
-                                                        ? 'bg-blue-100 text-blue-800'
-                                                        : 'bg-yellow-100 text-yellow-800'
+                                                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                                                     }`}>
                                                     {team.status === 'validated'
-                                                        ? 'Validée'
+                                                        ? '✓ Validée'
                                                         : team.status === 'complete'
-                                                            ? 'Complète'
-                                                            : 'Incomplète'}
+                                                            ? '📝 Complète'
+                                                            : '⚠ Incomplète'}
                                                 </span>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                <div>
-                                                    <p className="text-xs font-medium text-gray-500 uppercase">Capitaine</p>
-                                                    <p className="text-sm text-gray-900">{team.captain.pseudo}</p>
-                                                    <p className="text-xs text-gray-500">{team.captain.id}</p>
+                                            
+                                            {/* Informations principales */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                                    <div className="flex items-center mb-2">
+                                                        <UserCheck className="h-4 w-4 text-blue-600 mr-2" />
+                                                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Capitaine</p>
+                                                    </div>
+                                                    <p className="text-sm font-medium text-gray-900">{team.captain.pseudo}</p>
+                                                    <p className="text-xs text-gray-500 mt-1 font-mono">{team.captain.id}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs font-medium text-gray-500 uppercase">Joueurs</p>
-                                                    <p className="text-sm text-gray-900">{team.players.length}/4 joueurs</p>
-                                                    <p className="text-xs text-gray-500">{team.players.filter(p => p.status === 'validated').length} validés</p>
+                                                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                                    <div className="flex items-center mb-2">
+                                                        <Users className="h-4 w-4 text-purple-600 mr-2" />
+                                                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Joueurs</p>
+                                                    </div>
+                                                    <p className="text-sm font-medium text-gray-900">{team.players.length}/4 joueurs</p>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        <span className="inline-flex items-center">
+                                                            <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                                            {team.players.filter(p => p.status === 'validated').length} validés
+                                                        </span>
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <div className="mt-4 flex justify-end space-x-2">
+                                            
+                                            {/* Actions */}
+                                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                                                 <button
                                                     onClick={() => viewTeamDetails(team)}
-                                                    className="flex items-center px-3 py-2 text-sm text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Voir les détails"
+                                                    className="flex items-center justify-center px-4 py-2.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 active:scale-95 transition-all duration-200"
                                                 >
-                                                    <Eye className="h-4 w-4 mr-1" />
-                                                    Détails
+                                                    <Eye className="h-4 w-4 mr-2" />
+                                                    Voir les détails
                                                 </button>
                                                 <button
                                                     onClick={() => confirmDeleteTeam(team.id)}
-                                                    className="flex items-center px-3 py-2 text-sm text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Supprimer l'équipe"
+                                                    className="flex items-center justify-center px-4 py-2.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 active:scale-95 transition-all duration-200"
                                                 >
-                                                    <Trash2 className="h-4 w-4 mr-1" />
-                                                    Supprimer
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                    Supprimer l&apos;équipe
                                                 </button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
+                                
+                                {/* Message si aucune équipe */}
+                                {teams.length === 0 && (
+                                    <div className="text-center py-12">
+                                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune équipe trouvée</h3>
+                                        <p className="text-gray-600">Aucune équipe n&apos;est disponible pour le tournoi sélectionné.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
 
                     {/* Liste des joueurs organisée par équipes */}
                     {selectedTab === 'players' && (
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Validation des joueurs par équipe</h3>
-                                <div className="text-sm text-gray-600 mb-6">
-                                    Gérez la validation des joueurs organisés par équipe. Vous pouvez valider ou rejeter chaque joueur individuellement.
+                        <div className="space-y-4 sm:space-y-6">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                                <div className="flex flex-col space-y-4">
+                                    <div>
+                                        <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Validation des joueurs par équipe</h3>
+                                        <div className="text-sm text-gray-600 mt-2">
+                                            Gérez la validation des joueurs organisés par équipe. Vous pouvez valider ou rejeter chaque joueur individuellement.
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                        <label htmlFor="tournament-select-players" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                            Tournoi :
+                                        </label>
+                                        <select
+                                            id="tournament-select-players"
+                                            value={selectedTournamentForTeams}
+                                            onChange={(e) => setSelectedTournamentForTeams(e.target.value)}
+                                            className="w-full sm:w-auto min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 truncate"
+                                        >
+                                            <option value="all">Tous les joueurs (ancien système)</option>
+                                            {tournaments.map((tournament) => (
+                                                <option key={tournament.id} value={tournament.id}>
+                                                    {tournament.name} ({tournament.status === 'active' ? 'Actif' : tournament.status === 'completed' ? 'Terminé' : 'Brouillon'})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
                             {teams.map((team) => (
                                 <div key={team.id} className="bg-white rounded-xl shadow-sm border border-gray-200">
-                                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h4 className="text-lg font-medium text-gray-900">{team.name}</h4>
-                                                <p className="text-sm text-gray-600">Code: {team.code} • {team.players.length}/4 joueurs</p>
+                                    {/* En-tête responsive */}
+                                    <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gray-50">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">{team.name}</h4>
+                                                <p className="text-sm text-gray-600 mt-1">
+                                                    <span className="inline-flex items-center">
+                                                        <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                                        Code: {team.code} • {team.players.length}/4 joueurs
+                                                    </span>
+                                                </p>
                                             </div>
-                                            <div className="flex items-center space-x-4">
-                                                <div className="text-sm">
+                                            
+                                            {/* Statistiques responsive */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                                {/* Stats sur mobile - version compacte */}
+                                                <div className="flex sm:hidden items-center gap-4 text-xs">
+                                                    <span className="flex items-center text-green-600 font-medium">
+                                                        <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                                        {team.players.filter(p => p.status === 'validated').length} validés
+                                                    </span>
+                                                    <span className="flex items-center text-yellow-600 font-medium">
+                                                        <span className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
+                                                        {team.players.filter(p => p.status === 'pending').length} attente
+                                                    </span>
+                                                    <span className="flex items-center text-red-600 font-medium">
+                                                        <span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+                                                        {team.players.filter(p => p.status === 'rejected').length} rejetés
+                                                    </span>
+                                                </div>
+                                                
+                                                {/* Stats sur desktop - version détaillée */}
+                                                <div className="hidden sm:flex items-center text-sm space-x-4">
                                                     <span className="text-green-600 font-medium">
                                                         {team.players.filter(p => p.status === 'validated').length} validés
                                                     </span>
-                                                    <span className="text-gray-400 mx-2">•</span>
+                                                    <span className="text-gray-400">•</span>
                                                     <span className="text-yellow-600 font-medium">
                                                         {team.players.filter(p => p.status === 'pending').length} en attente
                                                     </span>
-                                                    <span className="text-gray-400 mx-2">•</span>
+                                                    <span className="text-gray-400">•</span>
                                                     <span className="text-red-600 font-medium">
                                                         {team.players.filter(p => p.status === 'rejected').length} rejetés
                                                     </span>
                                                 </div>
-                                                <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${team.status === 'validated' ? 'bg-green-100 text-green-800' :
-                                                    team.status === 'complete' ? 'bg-blue-100 text-blue-800' :
-                                                        'bg-yellow-100 text-yellow-800'
+                                                
+                                                {/* Badge statut */}
+                                                <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${team.status === 'validated' ? 'bg-green-100 text-green-800 border border-green-200' :
+                                                    team.status === 'complete' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                                        'bg-yellow-100 text-yellow-800 border border-yellow-200'
                                                     }`}>
-                                                    {team.status === 'validated' ? 'Équipe validée' :
-                                                        team.status === 'complete' ? 'Équipe complète' : 'Équipe incomplète'}
+                                                    {team.status === 'validated' ? '✓ Équipe validée' :
+                                                        team.status === 'complete' ? '📝 Équipe complète' : '⚠ Équipe incomplète'}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="p-6">
-                                        {/* Capitaine */}
-                                        <div className="mb-6">
-                                            <div className="flex items-center mb-3">
+                                    <div className="p-3 sm:p-4 lg:p-6">
+                                        {/* Capitaine - Version responsive */}
+                                        <div className="mb-4 sm:mb-6">
+                                            <div className="flex items-center mb-3 sm:mb-4">
                                                 <Crown className="h-5 w-5 text-yellow-500 mr-2" />
-                                                <h5 className="font-semibold text-gray-900">Capitaine</h5>
+                                                <h5 className="text-base sm:text-lg font-semibold text-gray-900">Capitaine</h5>
                                             </div>
-                                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                            
+                                            {/* Version mobile - carte compacte */}
+                                            <div className="sm:hidden bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                                <div className="space-y-3">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-semibold text-gray-900 text-base truncate">{team.captain.pseudo}</p>
+                                                            <p className="text-sm text-gray-600 mt-1">{team.captain.country}</p>
+                                                        </div>
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-2 whitespace-nowrap ${team.captain.status === 'validated' ? 'bg-green-100 text-green-800' :
+                                                            team.captain.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                'bg-yellow-100 text-yellow-800'
+                                                            }`}>
+                                                            {team.captain.status === 'validated' ? '✓ Validé' :
+                                                                team.captain.status === 'rejected' ? '✗ Rejeté' : '⏳ En attente'}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-gray-600">WhatsApp:</p>
+                                                            <p className="font-mono text-gray-900 text-xs truncate">{team.captain.whatsapp}</p>
+                                                        </div>
+                                                        <div className="ml-3">
+                                                            {team.captain.deviceCheckVideo ? (
+                                                                <a
+                                                                    href={team.captain.deviceCheckVideo}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center px-2 py-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                                                                >
+                                                                    <Eye className="h-3 w-3 mr-1" />
+                                                                    Vidéo
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-400">Pas de vidéo</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {team.captain.status === 'pending' && (
+                                                        <div className="flex gap-2 pt-2 border-t border-yellow-200">
+                                                            <button
+                                                                onClick={() => validatePlayer(team.id!, team.captain.id)}
+                                                                className="flex-1 flex items-center justify-center px-3 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
+                                                            >
+                                                                <Check className="h-4 w-4 mr-1" />
+                                                                Valider
+                                                            </button>
+                                                            <button
+                                                                onClick={() => rejectPlayer(team.id!, team.captain.id)}
+                                                                className="flex-1 flex items-center justify-center px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                                                            >
+                                                                <X className="h-4 w-4 mr-1" />
+                                                                Rejeter
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Version desktop/tablette - layout étendu */}
+                                            <div className="hidden sm:block bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                                     <div>
                                                         <p className="font-medium text-gray-900">{team.captain.pseudo}</p>
@@ -714,16 +1189,84 @@ const StatCard = ({ icon: Icon, title, value, color }: {
                                             </div>
                                         </div>
 
-                                        {/* Joueurs */}
+                                        {/* Joueurs - Version responsive */}
                                         {team.players.length > 0 && (
                                             <div>
-                                                <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                                                <h5 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
                                                     <Users className="h-5 w-5 text-blue-500 mr-2" />
                                                     Joueurs ({team.players.length})
                                                 </h5>
-                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                
+                                                {/* Version mobile - cartes compactes */}
+                                                <div className="sm:hidden space-y-3">
                                                     {team.players.map((player, index) => (
-                                                        <div key={player.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                                                        <div key={player.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                            <div className="flex items-start justify-between mb-3">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <h6 className="font-semibold text-gray-900 text-sm truncate">Joueur {index + 1}</h6>
+                                                                    <p className="text-sm font-medium text-gray-900 mt-1 truncate">{player.pseudo}</p>
+                                                                    <p className="text-xs text-gray-600">{player.country}</p>
+                                                                </div>
+                                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-2 whitespace-nowrap ${player.status === 'validated' ? 'bg-green-100 text-green-800' :
+                                                                    player.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                        'bg-yellow-100 text-yellow-800'
+                                                                    }`}>
+                                                                    {player.status === 'validated' ? '✓ Validé' :
+                                                                        player.status === 'rejected' ? '✗ Rejeté' : '⏳ En attente'}
+                                                                </span>
+                                                            </div>
+                                                            
+                                                            <div className="space-y-2 text-xs">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-gray-600">WhatsApp:</span>
+                                                                    <span className="font-mono text-gray-900 truncate ml-2">{player.whatsapp}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-gray-600">Vidéo:</span>
+                                                                    <div className="ml-2">
+                                                                        {player.deviceCheckVideo ? (
+                                                                            <a
+                                                                                href={player.deviceCheckVideo}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="inline-flex items-center px-2 py-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 rounded-md transition-colors"
+                                                                            >
+                                                                                <Eye className="h-3 w-3 mr-1" />
+                                                                                Voir
+                                                                            </a>
+                                                                        ) : (
+                                                                            <span className="text-gray-400">Aucune</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {player.status === 'pending' && (
+                                                                <div className="flex gap-2 mt-3 pt-3 border-t border-blue-200">
+                                                                    <button
+                                                                        onClick={() => validatePlayer(team.id!, player.id)}
+                                                                        className="flex-1 flex items-center justify-center px-3 py-2 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
+                                                                    >
+                                                                        <Check className="h-3 w-3 mr-1" />
+                                                                        Valider
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => rejectPlayer(team.id!, player.id)}
+                                                                        className="flex-1 flex items-center justify-center px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                                                                    >
+                                                                        <X className="h-3 w-3 mr-1" />
+                                                                        Rejeter
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                
+                                                {/* Version desktop/tablette - grille étendue */}
+                                                <div className="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                    {team.players.map((player, index) => (
+                                                        <div key={player.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                                                             <div className="flex items-center justify-between mb-3">
                                                                 <h6 className="font-medium text-gray-900">Joueur {index + 1}</h6>
                                                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${player.status === 'validated' ? 'bg-green-100 text-green-800' :
@@ -809,9 +1352,29 @@ const StatCard = ({ icon: Icon, title, value, color }: {
                         </div>
                     )}
 
-                    {/* Tournoi */}
-                    {selectedTab === 'tournament' && (
-                        <TournamentManager teams={teams} />
+                    {/* Gestion des Tournois */}
+                    {selectedTab === 'tournaments' && (
+                        <TournamentManagement onManageTournament={handleManageTournament} />
+                    )}
+
+                    {/* Gestion d'un Tournoi Spécifique */}
+                    {selectedTab === 'tournament-manage' && managingTournamentId && (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold text-gray-900">Gestion du Tournoi</h2>
+                                <button
+                                    onClick={handleBackToTournamentList}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                                >
+                                    ← Retour à la liste
+                                </button>
+                            </div>
+                            <TournamentManager
+                                teams={teams}
+                                tournamentId={managingTournamentId}
+                                onBackToList={handleBackToTournamentList}
+                            />
+                        </div>
                     )}
 
                     {/* Paramètres */}

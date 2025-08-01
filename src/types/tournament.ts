@@ -28,6 +28,7 @@ export interface Tournament {
   totalGames: number;
   startDate: Date;
   endDate?: Date;
+  deadline_register?: Date; // Date limite pour les inscriptions
   results: GameResult[];
   rankings: TeamRanking[];
 }

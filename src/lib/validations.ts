@@ -9,7 +9,26 @@ export const playerSchema = z.object({
         .trim(), // Permet tous les caractères, supprime juste les espaces en début/fin
     country: z
         .string()
-        .min(2, 'Veuillez sélectionner un pays'),
+        .min(2, 'Veuillez sélectionner un pays')
+        .refine((val) => {
+            // Si "Autre" est sélectionné, le champ doit contenir le pays personnalisé (au moins 2 caractères)
+            if (val === 'Autre') {
+                return false; // "Autre" seul n'est pas valide
+            }
+            return true;
+        }, 'Veuillez spécifier votre pays')
+        .refine((val) => {
+            // Si ce n'est pas un pays prédéfini et que c'est un pays personnalisé, vérifier la longueur
+            const predefinedCountries = [
+                'France', 'Algérie', 'Bénin', 'Maroc', 'Tunisie', 'Belgique', 'Suisse', 'Canada',
+                'Sénégal', 'Côte d\'Ivoire', 'Mali', 'Burkina Faso', 'Niger', 'Madagascar',
+                'Cameroun', 'Gabon', 'République démocratique du Congo'
+            ];
+            if (!predefinedCountries.includes(val) && val !== 'Autre') {
+                return val.length >= 2; // Pays personnalisé doit avoir au moins 2 caractères
+            }
+            return true;
+        }, 'Le nom du pays doit contenir au moins 2 caractères'),
     whatsapp: z
         .string()
         .min(8, 'Numéro WhatsApp invalide')

@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Team } from '@/types'
+import { TournamentService } from '@/services/tournamentService'
 import {
     Users,
     Crown,
-    CheckCircle
+    CheckCircle,
+    Trophy
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -15,33 +17,65 @@ export default function ValidatedTeamsPage() {
     const [teams, setTeams] = useState<Team[]>([])
     const [totalTeams, setTotalTeams] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [tournamentName, setTournamentName] = useState<string>('')
+    const [maxTeams, setMaxTeams] = useState<number>(50)
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(
-            query(collection(db, 'teams'), orderBy('createdAt', 'desc')),
-            (snapshot) => {
-                const teamsData = snapshot.docs
-                    .map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }) as Team)
-                    .filter(team => team.status === "validated" || team.status === "incomplete" || team.status === "complete");
+        let unsubscribe: (() => void) | null = null
 
-                // Mettre à jour le nombre total d'équipes
-                setTotalTeams(teamsData.length)
+        const setupSubscription = async () => {
+            try {
+                // Récupérer le tournoi actif
+                const activeTournament = await TournamentService.getActiveTournament()
+                if (!activeTournament) {
+                    console.error('Aucun tournoi actif trouvé')
+                    setLoading(false)
+                    return
+                }
 
-                // Filtrer les équipes validées côté client
-                const validatedTeams = teamsData.filter(team => team.status === 'validated')
-                setTeams(validatedTeams)
-                setLoading(false)
-            },
-            (error) => {
-                console.error('Erreur lors du chargement des équipes:', error)
+                setTournamentName(activeTournament.name)
+                setMaxTeams(activeTournament.settings?.maxTeams || 50)
+
+                // S'abonner aux équipes du tournoi actif
+                unsubscribe = onSnapshot(
+                    query(
+                        collection(db, `tournaments/${activeTournament.id}/teams`),
+                        orderBy('createdAt', 'desc')
+                    ),
+                    (snapshot) => {
+                        const teamsData = snapshot.docs
+                            .map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }) as Team)
+                            .filter(team => team.status === "validated" || team.status === "incomplete" || team.status === "complete")
+
+                        // Mettre à jour le nombre total d'équipes
+                        setTotalTeams(teamsData.length)
+
+                        // Filtrer les équipes validées côté client
+                        const validatedTeams = teamsData.filter(team => team.status === 'validated')
+                        setTeams(validatedTeams)
+                        setLoading(false)
+                    },
+                    (error) => {
+                        console.error('Erreur lors du chargement des équipes:', error)
+                        setLoading(false)
+                    }
+                )
+            } catch (error) {
+                console.error('Erreur lors de la configuration:', error)
                 setLoading(false)
             }
-        )
+        }
 
-        return () => unsubscribe()
+        setupSubscription()
+
+        return () => {
+            if (unsubscribe) {
+                unsubscribe()
+            }
+        }
     }, [])
 
     if (loading) {
@@ -70,11 +104,17 @@ export default function ValidatedTeamsPage() {
                     >
                         ← Retour à l&apos;accueil
                     </Link>
-                    <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                        <Trophy className="h-8 w-8 text-yellow-400" />
+                        <h1 className="text-4xl md:text-5xl font-bold text-white">
+                            {tournamentName || 'Tournoi'}
+                        </h1>
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-semibold text-blue-200 mb-4">
                         Équipes Inscrites
-                    </h1>
+                    </h2>
                     <p className="text-xl text-blue-200 mb-2">
-                        {teams.length} équipe{teams.length > 1 ? 's' : ''} qualifiée{teams.length > 1 ? 's' : ''} pour le tournoi
+                        {teams.length} équipe{teams.length > 1 ? 's' : ''} qualifiée{teams.length > 1 ? 's' : ''}
                     </p>
 
                     {/* Statistiques d'inscription */}
@@ -87,17 +127,17 @@ export default function ValidatedTeamsPage() {
                         <div className="flex items-center gap-6">
                             <div className="bg-blue-500/20 text-blue-300 px-4 py-2 rounded-lg border border-blue-500/30">
                                 <span className="text-sm">Total inscrites:</span>
-                                <span className="font-bold ml-1">{totalTeams}/50</span>
+                                <span className="font-bold ml-1">{totalTeams}/{maxTeams}</span>
                             </div>
 
-                            {totalTeams < 50 && (
-                                <div className="bg-orange-500/20 text-orange-300 px-4 py-2 rounded-lg border border-orange-500/30">
+                            {totalTeams < maxTeams && (
+                                <div className="bg-green-500/20 text-green-300 px-4 py-2 rounded-lg border border-green-500/30">
                                     <span className="text-sm">Places restantes:</span>
-                                    <span className="font-bold ml-1">{50 - totalTeams}</span>
+                                    <span className="font-bold ml-1">{maxTeams - totalTeams}</span>
                                 </div>
                             )}
 
-                            {totalTeams >= 50 && (
+                            {totalTeams >= maxTeams && (
                                 <div className="bg-red-500/20 text-red-300 px-4 py-2 rounded-lg border border-red-500/30">
                                     <span className="text-sm font-bold">COMPLET</span>
                                 </div>

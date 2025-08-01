@@ -3,6 +3,26 @@ import { adminDb } from '@/lib/firebase-admin';
 import { teamRegistrationSchema } from '@/lib/validations';
 import { generateTeamCode } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
+import { Tournament } from '@/types/tournament-multi';
+
+// Fonction pour récupérer le tournoi actif
+async function getActiveTournament(): Promise<Tournament | null> {
+    const tournamentsSnapshot = await adminDb
+        .collection('tournaments')
+        .where('status', '==', 'active')
+        .limit(1)
+        .get();
+    
+    if (tournamentsSnapshot.empty) {
+        return null;
+    }
+    
+    const tournamentDoc = tournamentsSnapshot.docs[0];
+    return {
+        id: tournamentDoc.id,
+        ...tournamentDoc.data()
+    } as Tournament;
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -11,14 +31,40 @@ export async function POST(request: NextRequest) {
         // Validation des données
         const validatedData = teamRegistrationSchema.parse(body);
 
-        // Vérifier que le même pseudo n'est pas déjà inscrit dans une autre équipe
+        // Vérifier qu'un tournoi actif existe
+        const activeTournament = await getActiveTournament();
+        if (!activeTournament) {
+            return NextResponse.json(
+                { error: 'Aucun tournoi actif disponible pour l\'inscription' },
+                { status: 400 }
+            );
+        }
+
+        // Vérifier si les inscriptions sont encore ouvertes
+        if (activeTournament.deadline_register) {
+            const now = new Date();
+            const deadline = new Date(activeTournament.deadline_register);
+            if (now > deadline) {
+                return NextResponse.json(
+                    { error: 'Les inscriptions sont fermées pour ce tournoi' },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // Vérifier que le même pseudo n'est pas déjà inscrit dans le tournoi actif
         const allPseudos = [
             validatedData.captain.pseudo,
             ...(validatedData.players || []).map((p: { pseudo: string }) => p.pseudo)
         ].map(p => p.trim().toLowerCase());
 
-        // Récupérer toutes les équipes
-        const teamsSnapshot = await adminDb.collection('teams').get();
+        // Récupérer les équipes du tournoi actif
+        const teamsSnapshot = await adminDb
+            .collection('tournaments')
+            .doc(activeTournament.id)
+            .collection('teams')
+            .get();
+        
         let duplicatePseudo = null;
         teamsSnapshot.forEach(doc => {
             const team = doc.data();
@@ -34,12 +80,12 @@ export async function POST(request: NextRequest) {
         });
         if (duplicatePseudo) {
             return NextResponse.json(
-                { error: `Le pseudo "${duplicatePseudo}" est déjà inscrit dans une autre équipe.` },
+                { error: `Le pseudo "${duplicatePseudo}" est déjà inscrit dans ce tournoi.` },
                 { status: 400 }
             );
         }
 
-        // Vérifier le nombre d'équipes existantes
+        // Vérifier le nombre d'équipes existantes dans le tournoi actif
         const filteredTeams = [];
         teamsSnapshot.forEach(doc => {
             const team = doc.data();
@@ -55,7 +101,7 @@ export async function POST(request: NextRequest) {
 
         if (filteredTeams.length >= maxTeams) {
             return NextResponse.json(
-                { error: 'Le nombre maximum d\'équipes a été atteint' },
+                { error: 'Le nombre maximum d\'équipes a été atteint pour ce tournoi' },
                 { status: 400 }
             );
         }
@@ -71,20 +117,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Vérifier l'unicité du nom d'équipe
+        // Vérifier l'unicité du nom d'équipe dans le tournoi actif
         const existingTeamSnapshot = await adminDb
+            .collection('tournaments')
+            .doc(activeTournament.id)
             .collection('teams')
             .where('name', '==', validatedData.teamName)
             .get();
 
         if (!existingTeamSnapshot.empty) {
             return NextResponse.json(
-                { error: 'Ce nom d\'équipe est déjà pris' },
+                { error: 'Ce nom d\'équipe est déjà pris dans ce tournoi' },
                 { status: 400 }
             );
         }
 
-        // Générer un code d'équipe unique
+        // Générer un code d'équipe unique dans le tournoi actif
         let teamCode: string;
         let codeExists = true;
         let attempts = 0;
@@ -92,6 +140,8 @@ export async function POST(request: NextRequest) {
         while (codeExists && attempts < 10) {
             teamCode = generateTeamCode();
             const codeSnapshot = await adminDb
+                .collection('tournaments')
+                .doc(activeTournament.id)
                 .collection('teams')
                 .where('code', '==', teamCode)
                 .get();
@@ -146,16 +196,15 @@ export async function POST(request: NextRequest) {
             updatedAt: now,
         };
 
-        // Sauvegarder dans Firestore
-        await adminDb.collection('teams').doc(teamId).set(teamData);
+        // Sauvegarder dans le tournoi actif
+        await adminDb
+            .collection('tournaments')
+            .doc(activeTournament.id)
+            .collection('teams')
+            .doc(teamId)
+            .set(teamData);
 
-        // Mettre à jour les statistiques
-        const statsDoc = adminDb.collection('stats').doc('tournament');
-        await statsDoc.set({
-            totalTeams: teamsSnapshot.size + 1,
-            totalPlayers: (settings?.totalPlayers || 0) + teamData.players.length,
-            lastUpdated: now,
-        }, { merge: true });
+        // Les statistiques sont maintenant calculées dynamiquement, pas besoin de les mettre à jour
 
         return NextResponse.json({
             success: true,

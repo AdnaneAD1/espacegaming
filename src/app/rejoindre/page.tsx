@@ -156,6 +156,7 @@ function RejoindreEquipePageContent() {
         setIsSubmitting(true);
 
         try {
+            console.log('Data:', data);
             const response = await fetch('/api/teams/join', {
                 method: 'POST',
                 headers: {
@@ -166,6 +167,7 @@ function RejoindreEquipePageContent() {
                     teamId: teamInfo.id,
                 }),
             });
+            console.log('Response:', response);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -314,11 +316,18 @@ function RejoindreEquipePageContent() {
                                         {...register('player.country')}
                                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         onChange={e => {
-                                            setOtherPlayerCountryValue(e.target.value);
-                                            setValue('player.country', e.target.value);
-                                            setShowOtherPlayerCountry(e.target.value === 'Autre');
+                                            const selectedValue = e.target.value;
+                                            if (selectedValue === 'Autre') {
+                                                setShowOtherPlayerCountry(true);
+                                                setOtherPlayerCountryValue('');
+                                                // Ne pas définir la valeur sur "Autre" pour forcer la saisie du pays personnalisé
+                                            } else {
+                                                setShowOtherPlayerCountry(false);
+                                                setOtherPlayerCountryValue('');
+                                                setValue('player.country', selectedValue);
+                                            }
                                         }}
-                                        value={watch('player.country')}
+                                        value={showOtherPlayerCountry ? 'Autre' : watch('player.country')}
                                     >
                                         <option value="">Sélectionnez votre pays</option>
                                         {countries.map((country) => (
@@ -329,12 +338,14 @@ function RejoindreEquipePageContent() {
                                         <input
                                             type="text"
                                             className="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="Entrez votre pays"
+                                            placeholder="Entrez votre pays *"
                                             value={otherPlayerCountryValue}
                                             onChange={e => {
-                                                setOtherPlayerCountryValue(e.target.value);
-                                                setValue('player.country', e.target.value);
+                                                const customCountry = e.target.value;
+                                                setOtherPlayerCountryValue(customCountry);
+                                                setValue('player.country', customCountry);
                                             }}
+                                            required
                                         />
                                     )}
                                     {errors.player?.country && (
@@ -474,8 +485,34 @@ import InscriptionClosed from '@/components/InscriptionClosed';
 import { isRegistrationOpen } from '@/lib/utils';
 
 export default function RejoindreEquipePage() {
+    const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
+
+    // Vérifier l'ouverture des inscriptions au chargement
+    useEffect(() => {
+        const checkRegistrationStatus = async () => {
+            try {
+                const isOpen = await isRegistrationOpen();
+                setRegistrationOpen(isOpen);
+            } catch (error) {
+                console.error('Erreur lors de la vérification des inscriptions:', error);
+                setRegistrationOpen(false);
+            }
+        };
+
+        checkRegistrationStatus();
+    }, []);
+
+    // Affichage de chargement pendant la vérification
+    if (registrationOpen === null) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+                <div className="text-white text-xl">Vérification des inscriptions...</div>
+            </div>
+        );
+    }
+
     // Vérifie ouverture inscription côté client
-    if (!isRegistrationOpen()) {
+    if (!registrationOpen) {
         return <InscriptionClosed />;
     }
 
