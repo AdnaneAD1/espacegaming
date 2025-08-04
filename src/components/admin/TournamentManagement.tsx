@@ -5,7 +5,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Tournament } from '@/types/tournament-multi';
 import { TournamentService } from '@/services/tournamentService';
-import { Trophy, Plus, Calendar, Users, Target, Settings, Play, Trash2, CheckCircle } from 'lucide-react';
+import { Trophy, Plus, Calendar, Users, Target, Settings, Play, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 
 interface TournamentManagementProps {
   onManageTournament?: (tournamentId: string) => void
@@ -15,6 +15,8 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newTournament, setNewTournament] = useState({
     name: '',
@@ -100,6 +102,7 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
       return;
     }
 
+    setActivatingId(tournamentId);
     try {
       await TournamentService.activateTournament(tournamentId);
       await fetchTournaments();
@@ -107,6 +110,8 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
     } catch (error) {
       console.error('Erreur lors de l\'activation:', error);
       alert('Erreur lors de l\'activation du tournoi');
+    } finally {
+      setActivatingId(null);
     }
   };
 
@@ -115,6 +120,7 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
       return;
     }
 
+    setDeletingId(tournamentId);
     try {
       await TournamentService.deleteTournament(tournamentId);
       await fetchTournaments();
@@ -122,6 +128,8 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       alert(`Erreur lors de la suppression: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -557,10 +565,21 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
                       {tournament.status === 'draft' && (
                         <button
                           onClick={() => handleActivateTournament(tournament.id, tournament.name)}
-                          className="flex items-center justify-center gap-2 bg-green-100 text-green-700 px-3 py-2 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+                          disabled={activatingId === tournament.id}
+                          className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                            activatingId === tournament.id
+                              ? 'bg-green-200 text-green-600 cursor-not-allowed'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                          }`}
                         >
-                          <Play className="w-4 h-4" />
-                          <span className="hidden sm:inline">Activer</span>
+                          {activatingId === tournament.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                          <span className="hidden sm:inline">
+                            {activatingId === tournament.id ? 'Activation...' : 'Activer'}
+                          </span>
                         </button>
                       )}
                       
@@ -579,10 +598,21 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
                       {tournament.status === 'draft' && (
                         <button
                           onClick={() => handleDeleteTournament(tournament.id, tournament.name)}
-                          className="flex items-center justify-center gap-2 bg-red-100 text-red-700 px-3 py-2 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                          disabled={deletingId === tournament.id}
+                          className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                            deletingId === tournament.id
+                              ? 'bg-red-200 text-red-600 cursor-not-allowed'
+                              : 'bg-red-100 text-red-700 hover:bg-red-200'
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
-                          <span className="hidden sm:inline">Supprimer</span>
+                          {deletingId === tournament.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                          <span className="hidden sm:inline">
+                            {deletingId === tournament.id ? 'Suppression...' : 'Supprimer'}
+                          </span>
                         </button>
                       )}
                       
