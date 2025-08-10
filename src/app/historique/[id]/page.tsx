@@ -7,6 +7,7 @@ import { Tournament, TournamentTeam, TournamentResult } from '@/types/tournament
 import { Trophy, Medal, Users, Target, ArrowLeft, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import console from 'console';
 
 interface TeamStats {
   teamId: string;
@@ -25,7 +26,6 @@ export default function TournamentDetailPage() {
   
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [teams, setTeams] = useState<TournamentTeam[]>([]);
-  const [results, setResults] = useState<TournamentResult[]>([]);
   const [rankings, setRankings] = useState<TeamStats[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -121,7 +121,6 @@ export default function TournamentDetailPage() {
             timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp || Date.now())
           };
         }) as TournamentResult[];
-        setResults(resultsData);
 
         // Debug: Afficher les données récupérées
         console.log('Teams data:', teamsData);
