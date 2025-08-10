@@ -248,7 +248,7 @@ export default function TournamentDetailPage() {
             <div className="flex items-center gap-3">
               <Target className="w-8 h-8 text-green-400" />
               <div>
-                <div className="text-2xl font-bold text-white">{results.length}</div>
+                <div className="text-2xl font-bold text-white">3</div>
                 <div className="text-gray-300">Parties jouées</div>
               </div>
             </div>
