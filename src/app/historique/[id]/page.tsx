@@ -7,7 +7,6 @@ import { Tournament, TournamentTeam, TournamentResult } from '@/types/tournament
 import { Trophy, Medal, Users, Target, ArrowLeft, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import console from 'console';
 
 interface TeamStats {
   teamId: string;
