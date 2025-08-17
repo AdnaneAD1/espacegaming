@@ -86,8 +86,8 @@ export default function Footer() {
                         <h3 className="text-lg font-semibold mb-4">Tournoi</h3>
                         <ul className="space-y-2 text-gray-400">
                             <li>Mode : Battle Royale Squad</li>
-                            <li>Récompense : 4000 CP</li>
-                            <li>Équipes max : 50</li>
+                            <li>Récompense : 100.000 F (Top1 60k • Top2 20k • Top3 10k) + Top killer 10.000 F</li>
+                            <li>Équipes max : 25</li>
                             <li>Joueurs par équipe : 4</li>
                         </ul>
                     </div>

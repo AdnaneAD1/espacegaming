@@ -49,7 +49,7 @@ export default function ReglesPage() {
                             <h2 className="text-3xl font-bold text-white mb-4">🎮 Annonce Officielle du Tournoi 🎮</h2>
                             <p className="text-yellow-200 text-lg">
                                 Notre tournoi officiel de Call of Duty: Mobile se tiendra le
-                                <strong className="text-yellow-400"> samedi 26 juillet 2025 à 22h</strong>
+                                <strong className="text-yellow-400"> samedi 06 septembre 2025 à 22h (Heure du Bénin)</strong>
                             </p>
                         </div>
 
@@ -93,20 +93,18 @@ export default function ReglesPage() {
                                 <ul className="space-y-2 text-gray-300">
                                     <li>• Mode : Battle Royale Squad</li>
                                     <li>• 4 joueurs par équipe maximum</li>
-                                    <li>• 50 équipes maximum</li>
+                                    <li>• 25 équipes maximum</li>
                                     <li>• Carte : Isolated</li>
                                 </ul>
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-blue-400 mb-3">Récompenses</h3>
                                 <ul className="space-y-2 text-gray-300">
-                                    <li>• 1ère place : <span className="text-yellow-400 font-bold">4000 CP par joueur</span></li>
+                                    <li>• 1ère place : <span className="text-yellow-400 font-bold">60.000 F</span></li>
+                                    <li>• 2ème place : <span className="text-yellow-400 font-bold">20.000 F</span></li>
+                                    <li>• 3ème place : <span className="text-yellow-400 font-bold">10.000 F</span></li>
+                                    <li>• Top killer : <span className="text-yellow-400 font-bold">10.000 F</span></li>
                                 </ul>
-                                <div className="mt-4 p-3 bg-yellow-900/30 rounded-lg border border-yellow-700">
-                                    <p className="text-yellow-300 text-sm">
-                                        <strong>Note :</strong> Seule l&apos;équipe gagnante (1ère place) recevra la récompense de 4000 CP.
-                                    </p>
-                                </div>
                             </div>
                         </div>
                     </section>
@@ -124,7 +122,7 @@ export default function ReglesPage() {
                                     <li>• Chaque équipe doit avoir un capitaine qui effectue l&apos;inscription</li>
                                     <li>• <strong className="text-yellow-400">Équipes de 4 joueurs fixes obligatoires</strong></li>
                                     <li>• Si l&apos;équipe est incomplète, un code unique est généré pour permettre à d&apos;autres joueurs de rejoindre</li>
-                                    <li>• Si la limite des 50 équipes sont atteintes avant la fin des inscriptions, les inscriptions seront encore possible si des équipes sont rejetées</li>
+                                    <li>• Si la limite des 25 équipes validées sont atteintes avant la fin des inscriptions, les inscriptions seront encore possible si des équipes sont rejetées</li>
                                     {/* <li>• Les équipes incomplètes ont 7 jours pour se compléter après création</li> */}
                                 </ul>
                                 <div className="mt-4 p-3 bg-red-900/30 rounded-lg border border-red-600">
@@ -213,7 +211,7 @@ export default function ReglesPage() {
                                     <div className="bg-yellow-900/30 rounded-lg p-4 border border-yellow-600">
                                         <h4 className="text-yellow-400 font-semibold mb-2">🕒 Délais à respecter</h4>
                                         <ul className="space-y-1 text-yellow-100 text-sm">
-                                            <li>• <strong>24 juillet 2025 à 23h59</strong> pour compléter une équipe</li>
+                                            <li>• <strong>31 août 2025 à 23h59</strong> pour compléter une équipe</li>
                                             <li>• Upload vidéo obligatoire lors de la jointure</li>
                                             <li>• Validation admin requise pour tous les joueurs</li>
                                         </ul>
@@ -355,15 +353,15 @@ export default function ReglesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                             <div className="text-center p-4 bg-gray-700/50 rounded-lg">
-                                <div className="text-2xl font-bold text-blue-400 mb-2">24 juillet</div>
+                                <div className="text-2xl font-bold text-blue-400 mb-2">31 août</div>
                                 <div className="text-gray-300">Fin des inscriptions</div>
                             </div>
                             <div className="text-center p-4 bg-gray-700/50 rounded-lg">
-                                <div className="text-2xl font-bold text-green-400 mb-2">24 juillet</div>
+                                <div className="text-2xl font-bold text-green-400 mb-2">31 août</div>
                                 <div className="text-gray-300">Validation des équipes</div>
                             </div>
                             <div className="text-center p-4 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-lg border-2 border-yellow-400">
-                                <div className="text-2xl font-bold text-white mb-2">26 juillet</div>
+                                <div className="text-2xl font-bold text-white mb-2">06 septembre</div>
                                 <div className="text-yellow-100 font-semibold">TOURNOI PRINCIPAL</div>
                                 <div className="text-yellow-200 text-sm mt-1">22h00</div>
                             </div>
@@ -373,7 +371,7 @@ export default function ReglesPage() {
                         <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg p-6 border border-blue-600">
                             <h3 className="text-xl font-bold text-white mb-4 flex items-center">
                                 <Clock className="w-5 h-5 text-yellow-400 mr-2" />
-                                Détails de l&apos;événement - 26 juillet 2025
+                                Détails de l&apos;événement - 06 septembre 2025
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>

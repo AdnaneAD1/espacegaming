@@ -96,9 +96,11 @@ export default function Home() {
               <span className="text-white">Battle Royale Squad</span>
             </h1>
             <p className="text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-              Rejoignez le tournoi officiel organisé par <strong>Espace Gaming CODM</strong>
+              Tournoi officiel le <strong>samedi 06 septembre</strong> à <strong>22h (Heure du Benin)</strong>
               <br />
-              Récompense de <span className="text-yellow-400 font-bold">4000 CP</span> par joueur gagnant !
+              Équipes de <strong>4 joueurs fixes</strong>, aucun remplacement après formation. Récompenses :
+              <span className="text-yellow-400 font-bold"> 100.000 F </span>
+              pour les 3 premières teams et le top killer
             </p>
 
             {/* Compteur ou Résultats */}
@@ -148,7 +150,7 @@ export default function Home() {
                       ))}
                     </div>
                     <p className="text-center text-gray-400 text-sm mt-4">
-                      Fin des inscriptions : <span className="text-white font-semibold">24 juillet 2025 à 23h59</span>
+                      Fin des inscriptions : <span className="text-white font-semibold">31 août 2025 à 23h59</span>
                     </p>
                   </>
                 ) : (
@@ -388,7 +390,7 @@ export default function Home() {
                   <li>• Une équipe doit avoir minimum 3 joueurs validés pour participer</li>
                   <li>• Chaque joueur doit uploader une vidéo de device check</li>
                   <li>• La validation des joueurs se fait manuellement par les administrateurs</li>
-                  <li>• Les inscriptions ferment le <strong>24 juillet 2025</strong></li>
+                  <li>• Les inscriptions ferment le <strong>31 août 2025</strong></li>
                 </ul>
               </div>
             </div>
@@ -413,25 +415,25 @@ export default function Home() {
               {
                 icon: Trophy,
                 title: "Récompense",
-                description: "4000 CP par joueur gagnant",
+                description: "100.000 F de base à partager par les 3 premières teams et le top killer",
                 color: "from-yellow-500 to-orange-500"
               },
               {
                 icon: Users,
                 title: "Format",
-                description: "Battle Royale Squad (4 joueurs fixes)",
+                description: "Battle Royale Squad de 4 joueurs • Aucun remplacement",
                 color: "from-blue-500 to-purple-500"
               },
               {
                 icon: Calendar,
                 title: "Date du tournoi",
-                description: "26 juillet 2025 - 22h",
+                description: "Samedi 06 septembre — 22h (Heure Bénin)",
                 color: "from-green-500 to-emerald-500"
               },
               {
                 icon: Shield,
                 title: "Inscription",
-                description: "Jusqu'au 24 juillet 2025",
+                description: "Jusqu'au 31 août 2025",
                 color: "from-red-500 to-pink-500"
               }
             ].map((item, index) => {
@@ -460,7 +462,7 @@ export default function Home() {
               </h2>
               <p className="text-gray-400 text-lg mb-6">
                 Espace Gaming CODM est une communauté passionnée de Call of Duty Mobile,
-                fondée en 2023. Nous organisons régulièrement des tournois pour offrir
+                fondée en 2022. Nous organisons régulièrement des tournois pour offrir
                 aux joueurs francophones une plateforme compétitive de qualité.
               </p>
               <div className="grid grid-cols-2 gap-6">
