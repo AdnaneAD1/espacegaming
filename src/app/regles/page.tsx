@@ -94,7 +94,7 @@ export default function ReglesPage() {
                                     <li>• Mode : Battle Royale Squad</li>
                                     <li>• 4 joueurs par équipe maximum</li>
                                     <li>• 25 équipes maximum</li>
-                                    <li>• Carte : Isolated</li>
+                                    <li>• Cartes : Isolated et Blackout</li>
                                 </ul>
                             </div>
                             <div>
@@ -281,8 +281,8 @@ export default function ReglesPage() {
                                     <li>• Configuration graphique et sensibilité libres</li>
                                     <li>• HUD personnalisé autorisé</li>
                                     <li>• Tous les appareils compatibles</li>
-                                    <li>• <strong>Maps jouées : Isolated</strong> (à télécharger avant le tournoi)</li>
-                                    <li>• <strong>Classes autorisées :</strong> medic (médecin), defense (défenseur), ninja, trickers (escrocs). Une classe supplémentaire par équipe est autorisée uniquement pour l&apos;échange, pas pour jouer.</li>
+                                    <li>• <strong>Maps jouées : Isolated et Blackout</strong> (à télécharger avant d’être dans le salon)</li>
+                                    <li>• <strong>Classes autorisées :</strong> Medic (Médecin), Pumped (Gonfle à bloc), Ninja, Rewind (Retour en arrière). Une 5ᵉ classe est laissée pour l’échange interne d’équipe mais n’est <strong>pas autorisée</strong> en jeu.</li>
                                 </ul>
                             </div>
                             <div>
@@ -319,12 +319,12 @@ export default function ReglesPage() {
                                     <li>• Modification du jeu</li>
                                     <li>• Utilisation de bots</li>
                                     <li>• Exploitation de bugs ou glitchs (camoufler son hitbox, traverser les murs, etc.)</li>
-                                    <li>• Utilisation des armes interdites : Machine de guerre, Thumper, Purificateur, Annihilateur, shotguns auto/semi-auto (Jak-12, Echo…), armes à effet glitché/buggué (selon la Maj)</li>
-                                    <li>• Utilisation des classes/atouts interdits (toutes sauf medic, defense, ninja, trickster)</li>
-                                    <li>• Utilisation des véhicules interdits : Tank, Jackal, Overbike</li>
+                                    <li>• Utilisation des <strong>armes interdites</strong> : Machine de guerre, Thumper, Purificateur, Annihilateur, shotguns à cadence auto/semi-auto (JAK-12, Echo…), DLQ munitions Oméga et toute arme à munitions explosives/thermites, armes à effets glitchés/effets buggués (selon MAJ)</li>
+                                    <li>• <strong>Classes</strong> interdites hormis celles autorisées ci-dessus (Medic, Pumped, Ninja, Rewind)</li>
+                                    <li>• Utilisation des <strong>véhicules interdits</strong> : Tank, Jackal, Overbike</li>
                                     <li>• Team-up (alliance entre équipes)</li>
                                     <li>• Stream-sniping (même en différé)</li>
-                                    <li>• Utilisation des munitions Omega ou thermite sur DLQ, Rytec AMR et autre arme pouvant en équiper</li>
+                                    <li>• Utilisation des munitions Oméga/thermite sur DLQ, Rytec AMR et autres armes pouvant en équiper</li>
                                 </ul>
                             </div>
                             <div>

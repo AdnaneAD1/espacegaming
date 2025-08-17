@@ -510,9 +510,31 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {/* Placeholders pour les logos des partenaires */}
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="bg-gray-800/60 backdrop-blur-lg rounded-xl p-6 border border-gray-700 flex items-center justify-center h-24">
+            {/* Partenaire: KB~VODUN */}
+            <a
+              href="https://www.tiktok.com/@danhomey97"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative rounded-xl overflow-hidden border border-gray-700 bg-gray-800/60 aspect-[4/5] min-h-40 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-yellow-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/40"
+              aria-label="KB~VODUN - Profil TikTok"
+            >
+              <div
+                className="absolute inset-0 bg-no-repeat bg-center bg-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                style={{ backgroundImage: "url('/partners/kb-vodun.jpg')" }}
+              />
+              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />
+              <div className="absolute bottom-3 left-3 right-3">
+                <div className="text-white font-semibold drop-shadow">KB~VODUN</div>
+                <div className="text-xs text-gray-300">TikTok @danhomey97</div>
+              </div>
+            </a>
+
+            {/* Autres partenaires (placeholders) */}
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="group relative rounded-xl overflow-hidden border border-gray-700 bg-gray-800/60 aspect-[4/5] min-h-40 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-yellow-500/10 flex items-center justify-center"
+              >
                 <span className="text-gray-500">Logo partenaire {item}</span>
               </div>
             ))}
