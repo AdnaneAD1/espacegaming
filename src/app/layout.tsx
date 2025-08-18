@@ -10,13 +10,16 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Tournoi COD Mobile - Espace Gaming CODM",
-  description: "Tournoi Call of Duty Mobile Battle Royale Squad organisé par Espace Gaming CODM. Récompense de 4000 CP par joueur gagnant.",
-  keywords: "Call of Duty Mobile, tournoi, Battle Royale, CODM, gaming, esport",
+  title: "Espace Gaming CODM",
+  description:
+    "Rejoins la communauté Espace Gaming CODM : entraide, actualités, événements, classements et ressources pour les joueurs de Call of Duty Mobile.",
+  keywords:
+    "Espace Gaming, communauté, COD Mobile, CODM, entraide, actualités, événements, gaming, esport, replays, classements",
   authors: [{ name: "Espace Gaming CODM" }],
   openGraph: {
-    title: "Tournoi COD Mobile - Espace Gaming CODM",
-    description: "Tournoi Call of Duty Mobile Battle Royale Squad avec 4000 CP de récompense par joueur",
+    title: "Espace Gaming CODM",
+    description:
+      "La communauté béninoise dédiée à Call of Duty Mobile : infos, entraide, événements et ressources pour progresser et partager.",
     type: "website",
     locale: "fr_FR",
   },
