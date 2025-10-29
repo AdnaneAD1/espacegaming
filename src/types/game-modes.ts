@@ -407,46 +407,49 @@ export class GameModeUtils {
   
   // Vérifier si un mode nécessite des équipes
   static isTeamMode(gameMode: GameMode): boolean {
-    return GAME_MODES_CONFIG[gameMode].teamSize > 1;
+    const config = GAME_MODES_CONFIG[gameMode];
+    return (config?.teamSize || 1) > 1;
   }
   
   // Obtenir le nom d'affichage d'un mode
   static getDisplayName(gameMode: GameMode): string {
-    return GAME_MODES_CONFIG[gameMode].displayName;
+    return GAME_MODES_CONFIG[gameMode]?.displayName || 'Mode inconnu';
   }
   
   // Obtenir la taille d'équipe requise
   static getTeamSize(gameMode: GameMode | undefined): number {
     // Pour les anciens tournois sans gameMode, retourner 4 (BR Squad par défaut)
     if (!gameMode) return 4;
-    return GAME_MODES_CONFIG[gameMode].teamSize;
+    return GAME_MODES_CONFIG[gameMode]?.teamSize || 4;
   }
   
   // Obtenir le format Best Of pour les modes multijoueur
   static getBestOf(gameMode: GameMode): 3 | 5 | undefined {
-    return GAME_MODES_CONFIG[gameMode].settings.bestOf;
+    return GAME_MODES_CONFIG[gameMode]?.settings?.bestOf;
   }
   
   // Vérifier si un mode est en format Best Of
   static isBestOfMode(gameMode: GameMode): boolean {
-    return GAME_MODES_CONFIG[gameMode].settings.bestOf !== undefined;
+    const config = GAME_MODES_CONFIG[gameMode];
+    return config?.settings?.bestOf !== undefined;
   }
   
   // Vérifier si un mode utilise des phases de groupes
   static hasGroupStage(gameMode: GameMode): boolean {
     const config = GAME_MODES_CONFIG[gameMode];
-    return config.settings.groupStage?.enabled === true;
+    return config?.settings?.groupStage?.enabled === true;
   }
 
   // Vérifier si un mode est multijoueur
   static isMultiplayerMode(gameMode: GameMode): boolean {
-    return GAME_MODES_CONFIG[gameMode].category === 'multiplayer';
+    const config = GAME_MODES_CONFIG[gameMode];
+    return config?.category === 'multiplayer';
   }
   
   // Calculer le nombre optimal d'équipes par groupe
   static calculateOptimalGroupSize(totalTeams: number, gameMode: GameMode): number {
     const config = GAME_MODES_CONFIG[gameMode];
-    if (!config.settings.groupStage?.enabled) return totalTeams;
+    if (!config?.settings?.groupStage?.enabled) return totalTeams;
     
     // Logique pour calculer automatiquement la taille des groupes
     if (totalTeams <= 8) return 4; // 2 groupes de 4
@@ -465,7 +468,7 @@ export class GameModeUtils {
   // Obtenir le nombre de qualifiés par groupe
   static getQualifiersPerGroup(gameMode: GameMode): 1 | 2 {
     const config = GAME_MODES_CONFIG[gameMode];
-    return config.settings.groupStage?.qualifiersPerGroup || 1;
+    return config?.settings?.groupStage?.qualifiersPerGroup || 1;
   }
 
   // Obtenir le format Best Of effectif (config personnalisée ou par défaut)

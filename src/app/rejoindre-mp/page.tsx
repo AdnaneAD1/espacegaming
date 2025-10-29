@@ -592,17 +592,20 @@ function RejoindreEquipePageContent() {
 
 import { Suspense } from 'react';
 
-import { isRegistrationOpen } from '@/lib/utils';
-
 export default function RejoindreEquipePage() {
     const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
 
-    // Vérifier l'ouverture des inscriptions au chargement
+    // Vérifier l'ouverture des inscriptions pour le tournoi MP
     useEffect(() => {
         const checkRegistrationStatus = async () => {
             try {
-                const isOpen = await isRegistrationOpen();
-                setRegistrationOpen(isOpen);
+                const tournament = await TournamentService.getActiveMPTournament();
+                if (tournament && tournament.deadline_register) {
+                    const isOpen = new Date() < new Date(tournament.deadline_register);
+                    setRegistrationOpen(isOpen);
+                } else {
+                    setRegistrationOpen(false);
+                }
             } catch (error) {
                 console.error('Erreur lors de la vérification des inscriptions:', error);
                 setRegistrationOpen(false);

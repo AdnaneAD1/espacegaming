@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Trophy, Users, Calendar, Clock, Star, Shield, Gamepad2, UserPlus, Award } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import TikTokSection from '@/components/TikTokSection';
 import { isRegistrationOpen } from '@/lib/utils';
 import { TournamentService } from '@/services/tournamentService';
 import { GameModeUtils } from '@/types/game-modes';
@@ -234,131 +235,7 @@ export default function Home() {
       {(brTournament || mpTournament) && (
         <section className="py-16 bg-gray-800/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Ancien code commenté - à supprimer plus tard */}
-            {false && isClient && (
-              <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-6 mb-8 max-w-2xl mx-auto border border-gray-700">
-                {isResultsAvailable ? (
-                  /* Résultats disponibles */
-                  <>
-                    <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center justify-center gap-2">
-                      <Trophy className="w-6 h-6 text-yellow-400" />
-                      Résultats du Tournoi Disponibles !
-                    </h3>
-                    <p className="text-center text-gray-300 mb-6">
-                      Le tournoi est terminé ! Découvrez le classement final et félicitez les gagnants.
-                    </p>
-                    <div className="text-center">
-                      <Link
-                        href="/classement-final"
-                        className="inline-flex items-center gap-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                      >
-                        <Trophy className="w-6 h-6" />
-                        Voir le Classement Final
-                        <Award className="w-5 h-5" />
-                      </Link>
-                    </div>
-                  </>
-                ) : registrationOpen ? (
-                  /* Inscriptions ouvertes */
-                  <>
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-center gap-2">
-                      <Clock className="w-5 h-5 text-green-400" />
-                      Inscriptions ouvertes encore :
-                    </h3>
-                    <div className="grid grid-cols-4 gap-4">
-                      {[
-                        { label: 'Jours', value: brTimeLeft.days },
-                        { label: 'Heures', value: brTimeLeft.hours },
-                        { label: 'Minutes', value: brTimeLeft.minutes },
-                        { label: 'Secondes', value: brTimeLeft.seconds },
-                      ].map((item) => (
-                        <div key={item.label} className="text-center">
-                          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-3 mb-2">
-                            <span className="text-2xl font-bold text-white">{item.value.toString().padStart(2, '0')}</span>
-                          </div>
-                          <span className="text-sm text-gray-400">{item.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-center text-gray-400 text-sm mt-4">
-                      Fin des inscriptions : <span className="text-white font-semibold">31 août 2025 à 23h59</span>
-                    </p>
-                  </>
-                ) : (
-                  /* Inscriptions fermées */
-                  <>
-                    <h3 className="text-lg font-semibold text-red-400 mb-4 flex items-center justify-center gap-2">
-                      <Clock className="w-5 h-5" />
-                      Inscriptions fermées
-                    </h3>
-                    <p className="text-center text-gray-400 mb-6">
-                      Les inscriptions pour ce tournoi sont maintenant fermées.
-                      <br />
-                      <span className="text-white font-semibold">Le tournoi sera diffusé en direct sur :</span>
-                    </p>
-                    
-                    {/* Comptes TikTok */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                      <div className="text-center">
-                        <h4 className="text-white font-semibold mb-3 flex items-center justify-center gap-2">
-                          <Users className="w-5 h-5 text-pink-400" />
-                          Mister A YT
-                        </h4>
-                        <div className="flex justify-center">
-                          <blockquote 
-                            className="tiktok-embed" 
-                            cite="https://www.tiktok.com/@misteraytcodm" 
-                            data-unique-id="misteraytcodm" 
-                            data-embed-type="creator" 
-                            style={{maxWidth: '300px', minWidth: '288px'}}
-                          >
-                            <section>
-                              <a 
-                                target="_blank" 
-                                href="https://www.tiktok.com/@misteraytcodm?refer=creator_embed"
-                                className="text-pink-400 hover:text-pink-300 transition-colors"
-                              >
-                                @misteraytcodm
-                              </a>
-                            </section>
-                          </blockquote>
-                        </div>
-                      </div>
-                      
-                      <div className="text-center">
-                        <h4 className="text-white font-semibold mb-3 flex items-center justify-center gap-2">
-                          <Users className="w-5 h-5 text-pink-400" />
-                          Adoooooo
-                        </h4>
-                        <div className="flex justify-center">
-                          <blockquote 
-                            className="tiktok-embed" 
-                            cite="https://www.tiktok.com/@goatcoincoin" 
-                            data-unique-id="goatcoincoin" 
-                            data-embed-type="creator" 
-                            style={{maxWidth: '300px', minWidth: '288px'}}
-                          >
-                            <section>
-                              <a 
-                                target="_blank" 
-                                href="https://www.tiktok.com/@goatcoincoin?refer=creator_embed"
-                                className="text-pink-400 hover:text-pink-300 transition-colors"
-                              >
-                                @goatcoincoin
-                              </a>
-                            </section>
-                          </blockquote>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <p className="text-center text-gray-400 text-sm mt-6">
-                      <span className="text-white">Suivez-nous pour les prochains tournois !</span>
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
+            
 
             {/* Boutons d'action responsive */}
             <div className="space-y-6">
@@ -366,34 +243,36 @@ export default function Home() {
               <div>
                 <h3 className="text-lg font-semibold text-white text-center mb-3">Créer une équipe</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto px-4">
-                  {registrationOpen ? (
-                    <>
-                      <Link
-                        href="/inscription"
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
-                      >
-                        <UserPlus className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">Battle Royale</span>
-                      </Link>
-                      <Link
-                        href="/inscription/mp"
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
-                      >
-                        <UserPlus className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">Multijoueur</span>
-                      </Link>
-                    </>
+                  {/* Battle Royale */}
+                  {brTournament && brTournament.deadline_register && new Date() < new Date(brTournament.deadline_register) ? (
+                    <Link
+                      href="/inscription"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                    >
+                      <UserPlus className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">Battle Royale</span>
+                    </Link>
                   ) : (
-                    <>
-                      <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
-                        <UserPlus className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">BR (Fermé)</span>
-                      </div>
-                      <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
-                        <UserPlus className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">MP (Fermé)</span>
-                      </div>
-                    </>
+                    <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                      <UserPlus className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">BR (Fermé)</span>
+                    </div>
+                  )}
+                  
+                  {/* Multijoueur */}
+                  {mpTournament && mpTournament.deadline_register && new Date() < new Date(mpTournament.deadline_register) ? (
+                    <Link
+                      href="/inscription/mp"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                    >
+                      <UserPlus className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">Multijoueur</span>
+                    </Link>
+                  ) : (
+                    <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                      <UserPlus className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">MP (Fermé)</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -402,34 +281,36 @@ export default function Home() {
               <div>
                 <h3 className="text-lg font-semibold text-white text-center mb-3">Rejoindre une équipe</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto px-4">
-                  {registrationOpen ? (
-                    <>
-                      <Link
-                        href="/rejoindre"
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
-                      >
-                        <Users className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">Battle Royale</span>
-                      </Link>
-                      <Link
-                        href="/rejoindre-mp"
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
-                      >
-                        <Users className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">Multijoueur</span>
-                      </Link>
-                    </>
+                  {/* Battle Royale */}
+                  {brTournament && brTournament.deadline_register && new Date() < new Date(brTournament.deadline_register) ? (
+                    <Link
+                      href="/rejoindre"
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                    >
+                      <Users className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">Battle Royale</span>
+                    </Link>
                   ) : (
-                    <>
-                      <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
-                        <Users className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">BR (Fermé)</span>
-                      </div>
-                      <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
-                        <Users className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">MP (Fermé)</span>
-                      </div>
-                    </>
+                    <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                      <Users className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">BR (Fermé)</span>
+                    </div>
+                  )}
+                  
+                  {/* Multijoueur */}
+                  {mpTournament && mpTournament.deadline_register && new Date() < new Date(mpTournament.deadline_register) ? (
+                    <Link
+                      href="/rejoindre-mp"
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                    >
+                      <Users className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">Multijoueur</span>
+                    </Link>
+                  ) : (
+                    <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                      <Users className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">MP (Fermé)</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -487,6 +368,13 @@ export default function Home() {
                 <span className="truncate">Suivre une équipe</span>
               </Link>
             </div>
+            
+            {/* Section TikTok - Affichée quand toutes les inscriptions sont fermées */}
+            {!registrationOpen && (
+              <div className="mt-8">
+                <TikTokSection />
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -775,15 +663,15 @@ interface TournamentCardProps {
   teamsCount: number;
 }
 
-function TournamentCard({ tournament, type, isClient, timeLeft, registrationOpen, teamsCount }: TournamentCardProps) {
+function TournamentCard({ tournament, type, isClient, timeLeft, teamsCount }: TournamentCardProps) {
   const gameModeName = GameModeUtils.getDisplayName(tournament.gameMode);
   const teamSize = GameModeUtils.getTeamSize(tournament.gameMode);
   const isBR = type === 'br';
   const maxTeams = tournament.settings?.maxTeams || 50;
   const placesRestantes = Math.max(0, maxTeams - teamsCount);
   
-  // Vérifier si les inscriptions sont ouvertes pour ce tournoi
-  const isRegistrationOpenForTournament = registrationOpen && tournament.deadline_register && new Date() < new Date(tournament.deadline_register);
+  // Vérifier si les inscriptions sont ouvertes pour ce tournoi spécifique
+  const isRegistrationOpenForTournament = !!(tournament.deadline_register && new Date() < new Date(tournament.deadline_register));
 
   return (
     <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">

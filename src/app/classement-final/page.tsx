@@ -260,7 +260,7 @@ export default function ClassementFinal() {
             </p>
             <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-6 border border-gray-700">
               <p className="text-gray-400">
-                Revenez le <span className="text-yellow-400 font-bold">27 janvier à 00h00</span> pour découvrir le classement final !
+                Revenez au début du tournoi pour découvrir le classement final !
               </p>
             </div>
           </div>

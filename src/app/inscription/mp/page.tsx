@@ -24,7 +24,6 @@ const countries = [
 ];
 
 import InscriptionClosed from '@/components/InscriptionClosed';
-import { isRegistrationOpen } from '@/lib/utils';
 
 export default function InscriptionMPPage() {
     const router = useRouter();
@@ -165,7 +164,7 @@ export default function InscriptionMPPage() {
         }
     };
 
-    // Charger le tournoi MP actif au montage
+    // Charger le tournoi MP actif et vérifier sa deadline
     useEffect(() => {
         const loadTournament = async () => {
             try {
@@ -173,45 +172,35 @@ export default function InscriptionMPPage() {
                 if (tournament) {
                     setActiveTournament(tournament);
                     const size = GameModeUtils.getTeamSize(tournament.gameMode);
-                    const modeName = GameModeUtils.getDisplayName(tournament.gameMode);
                     setTeamSize(size);
-                    setGameModeName(modeName);
-
-                    // Ne pas pré-remplir les joueurs automatiquement
-                    // Les joueurs seront ajoutés manuellement via le bouton "Ajouter un coéquipier"
+                    setGameModeName(GameModeUtils.getDisplayName(tournament.gameMode));
+                    
+                    // Vérifier si les inscriptions sont ouvertes pour CE tournoi MP
+                    const isOpen = !!(tournament.deadline_register && new Date() < new Date(tournament.deadline_register));
+                    setRegistrationOpen(isOpen);
+                    
+                    // Ne pas initialiser les joueurs automatiquement
                     reset({
                         teamName: '',
                         captain: {
                             pseudo: '',
                             country: '',
                             whatsapp: '',
-                            deviceCheckVideo: '',
+                            deviceCheckVideo: ''
                         },
-                        players: [], // Tableau vide au départ
+                        players: []
                     });
+                } else {
+                    setRegistrationOpen(false);
                 }
             } catch (error) {
                 console.error('Erreur lors du chargement du tournoi:', error);
+                setRegistrationOpen(false);
             }
         };
 
         loadTournament();
     }, [reset]);
-
-    // Vérifier l'ouverture des inscriptions
-    useEffect(() => {
-        const checkRegistrationStatus = async () => {
-            try {
-                const isOpen = await isRegistrationOpen();
-                setRegistrationOpen(isOpen);
-            } catch (error) {
-                console.error('Erreur lors de la vérification des inscriptions:', error);
-                setRegistrationOpen(false);
-            }
-        };
-
-        checkRegistrationStatus();
-    }, []);
 
     if (registrationOpen === null) {
         return (

@@ -4,12 +4,17 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Tournament } from '@/types/tournament-multi';
-import { Trophy, Calendar, Users, ChevronRight } from 'lucide-react';
+import { GAME_MODES_CONFIG, GameModeUtils } from '@/types/game-modes';
+import { Trophy, Calendar, Users, ChevronRight, Gamepad2, Target } from 'lucide-react';
 import Link from 'next/link';
+
+type TabType = 'br' | 'mp';
 
 export default function HistoriquePage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>('br');
+  const [validatedTeamsCounts, setValidatedTeamsCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchCompletedTournaments = async () => {
@@ -27,6 +32,26 @@ export default function HistoriquePage() {
         })) as Tournament[];
         
         setTournaments(tournamentsData);
+        console.log('Tournois chargés:', tournamentsData.map(t => ({ id: t.id, name: t.name, gameMode: t.gameMode })));
+        
+        // Charger le nombre d'équipes validées pour chaque tournoi
+        const counts: Record<string, number> = {};
+        await Promise.all(
+          tournamentsData.map(async (tournament) => {
+            try {
+              const teamsQuery = query(
+                collection(db, 'tournaments', tournament.id, 'teams'),
+                where('status', '==', 'validated')
+              );
+              const teamsSnapshot = await getDocs(teamsQuery);
+              counts[tournament.id] = teamsSnapshot.size;
+            } catch (error) {
+              console.error(`Erreur lors du chargement des équipes pour ${tournament.id}:`, error);
+              counts[tournament.id] = 0;
+            }
+          })
+        );
+        setValidatedTeamsCounts(counts);
       } catch (error) {
         console.error('Erreur lors du chargement des tournois:', error);
       } finally {
@@ -64,6 +89,13 @@ export default function HistoriquePage() {
     );
   }
 
+  // Filtrer les tournois selon l'onglet actif
+  const filteredTournaments = tournaments.filter(tournament => {
+    if (!tournament.gameMode) return activeTab === 'br'; // Anciens tournois sans gameMode = BR
+    const isMP = GameModeUtils.isMultiplayerMode(tournament.gameMode);
+    return activeTab === 'mp' ? isMP : !isMP;
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
       <div className="container mx-auto px-4 py-8">
@@ -80,20 +112,52 @@ export default function HistoriquePage() {
           </p>
         </div>
 
+        {/* Onglets BR / MP */}
+        <div className="flex justify-center mb-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-1 inline-flex gap-1">
+            <button
+              onClick={() => setActiveTab('br')}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                activeTab === 'br'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Gamepad2 className="w-5 h-5" />
+                <span>Battle Royale</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('mp')}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                activeTab === 'mp'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Trophy className="w-5 h-5" />
+                <span>Multijoueur</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Liste des tournois */}
-        {tournaments.length === 0 ? (
+        {filteredTournaments.length === 0 ? (
           <div className="text-center py-16">
             <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-2xl font-semibold text-white mb-2">
-              Aucun tournoi terminé
+              Aucun tournoi {activeTab === 'br' ? 'Battle Royale' : 'Multijoueur'} terminé
             </h3>
             <p className="text-gray-400">
-              Les tournois terminés apparaîtront ici
+              Les tournois {activeTab === 'br' ? 'Battle Royale' : 'Multijoueur'} terminés apparaîtront ici
             </p>
           </div>
         ) : (
           <div className="grid gap-6 md:gap-8">
-            {tournaments.map((tournament) => (
+            {filteredTournaments.map((tournament) => (
               <div
                 key={tournament.id}
                 className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-white/20 hover:bg-white/15 transition-all duration-300"
@@ -120,8 +184,24 @@ export default function HistoriquePage() {
                       </div>
                       
                       <div className="flex items-center gap-2 text-gray-300">
+                        <Gamepad2 className="w-4 h-4" />
+                        <span>{GAME_MODES_CONFIG[tournament.gameMode]?.displayName || 'Mode inconnu'}</span>
+                      </div>
+                      
+                      {tournament.customFormat && (
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <Target className="w-4 h-4" />
+                          <span>
+                            {tournament.customFormat.tournamentFormat === 'elimination_direct' && 'Élimination directe'}
+                            {tournament.customFormat.tournamentFormat === 'groups_then_elimination' && 'Groupes puis élimination'}
+                            {tournament.customFormat.tournamentFormat === 'groups_only' && 'Phase de groupes uniquement'}
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-2 text-gray-300">
                         <Users className="w-4 h-4" />
-                        <span>Équipes participantes</span>
+                        <span>{validatedTeamsCounts[tournament.id] || 0} équipes</span>
                       </div>
                     </div>
                   </div>
