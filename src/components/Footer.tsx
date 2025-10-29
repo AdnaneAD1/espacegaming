@@ -19,7 +19,7 @@ export default function Footer() {
                             </span>
                         </div>
                         <p className="text-gray-400 mb-6 max-w-md">
-                            Communauté dédiée aux tournois Call of Duty Mobile.
+                            Communauté dédiée aux tournois Call of Duty Mobile Battle Royale et Multijoueur.
                             Rejoignez-nous pour des compétitions épiques et des récompenses extraordinaires !
                         </p>
                         <div className="flex space-x-4">
@@ -83,12 +83,12 @@ export default function Footer() {
 
                     {/* Informations */}
                     <div>
-                        <h3 className="text-lg font-semibold mb-4">Tournoi</h3>
+                        <h3 className="text-lg font-semibold mb-4">Tournois</h3>
                         <ul className="space-y-2 text-gray-400">
-                            <li>Mode : Battle Royale Squad</li>
-                            <li>Récompense : 100.000 F (Top1 60k • Top2 20k • Top3 10k) + Top killer 10.000 F</li>
-                            <li>Équipes max : 25</li>
-                            <li>Joueurs par équipe : 4</li>
+                            <li>Modes : Battle Royale & Multijoueur</li>
+                            <li>Récompenses attractives pour chaque mode</li>
+                            <li>BR : 4 joueurs par équipe</li>
+                            <li>MP : 5 joueurs par équipe</li>
                         </ul>
                     </div>
                 </div>

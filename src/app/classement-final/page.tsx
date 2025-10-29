@@ -8,6 +8,11 @@ import { Team } from '@/types/index';
 import { GameResult, TeamRanking } from '@/types/tournament';
 import { Tournament } from '@/types/tournament-multi';
 import { TournamentService } from '@/services/tournamentService';
+import { KillLeaderboardService } from '@/services/killLeaderboardService';
+import { TournamentKillLeaderboard } from '@/types/tournament-multi';
+import KillLeaderboardView from '@/components/tournament/KillLeaderboardView';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 export default function ClassementFinal() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -17,6 +22,9 @@ export default function ClassementFinal() {
   const [isResultsAvailable, setIsResultsAvailable] = useState(false);
   const [activeTournament, setActiveTournament] = useState<Tournament | null>(null);
   const [tournamentLoading, setTournamentLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'classement' | 'kills' | 'resultats'>('classement');
+  const [killLeaderboard, setKillLeaderboard] = useState<TournamentKillLeaderboard | null>(null);
+  const [loadingKillLeaderboard, setLoadingKillLeaderboard] = useState(false);
 
   // Calculer les classements
   const updateRankings = useCallback((results: GameResult[]) => {
@@ -199,6 +207,30 @@ export default function ClassementFinal() {
     updateRankings(gameResults);
   }, [gameResults, updateRankings]);
 
+  // Charger le Kill Leaderboard quand on passe sur l'onglet kills
+  const loadKillLeaderboard = useCallback(async () => {
+    if (!activeTournament?.id || !activeTournament?.gameMode) return;
+    
+    setLoadingKillLeaderboard(true);
+    try {
+      const leaderboard = await KillLeaderboardService.getKillLeaderboard(
+        activeTournament.id,
+        activeTournament.gameMode
+      );
+      setKillLeaderboard(leaderboard);
+    } catch (error) {
+      console.error('Erreur lors du chargement du Kill Leaderboard:', error);
+    } finally {
+      setLoadingKillLeaderboard(false);
+    }
+  }, [activeTournament]);
+
+  useEffect(() => {
+    if (activeTab === 'kills' && activeTournament && !killLeaderboard && !loadingKillLeaderboard) {
+      loadKillLeaderboard();
+    }
+  }, [activeTab, activeTournament, killLeaderboard, loadingKillLeaderboard, loadKillLeaderboard]);
+
   // Fonction pour obtenir l'icône du podium
   const getPodiumIcon = (position: number) => {
     switch (position) {
@@ -217,36 +249,45 @@ export default function ClassementFinal() {
   // Si les résultats ne sont pas encore disponibles
   if (!isResultsAvailable) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
-        <div className="text-center">
-          <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6" />
-          <h1 className="text-4xl font-bold text-white mb-4">Classement Final</h1>
-          <p className="text-xl text-gray-300 mb-8">
-            Les résultats ne sont pas encore disponibles
-          </p>
-          <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-6 border border-gray-700">
-            <p className="text-gray-400">
-              Revenez le <span className="text-yellow-400 font-bold">27 janvier à 00h00</span> pour découvrir le classement final !
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <div className="text-center">
+            <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6" />
+            <h1 className="text-4xl font-bold text-white mb-4">Classement Final</h1>
+            <p className="text-xl text-gray-300 mb-8">
+              Les résultats ne sont pas encore disponibles
             </p>
+            <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-6 border border-gray-700">
+              <p className="text-gray-400">
+                Revenez le <span className="text-yellow-400 font-bold">27 janvier à 00h00</span> pour découvrir le classement final !
+              </p>
+            </div>
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-          <p className="text-white text-xl">Chargement du classement...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+            <p className="text-white text-xl">Chargement du classement...</p>
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      <Navbar />
       {/* Header */}
       <div className="relative overflow-hidden bg-gradient-to-r from-yellow-600 to-yellow-800 py-16">
         <div className="absolute inset-0 bg-black/20"></div>
@@ -262,8 +303,49 @@ export default function ClassementFinal() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Statistiques globales */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        {/* Onglets de navigation */}
+        <div className="mb-8">
+          <div className="flex flex-wrap justify-center gap-4">
+            <button
+              onClick={() => setActiveTab('classement')}
+              className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${
+                activeTab === 'classement'
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-400 hover:text-white hover:bg-white/20'
+              }`}
+            >
+              <Trophy className="w-5 h-5" />
+              Classement
+            </button>
+            <button
+              onClick={() => setActiveTab('kills')}
+              className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${
+                activeTab === 'kills'
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-400 hover:text-white hover:bg-white/20'
+              }`}
+            >
+              <Target className="w-5 h-5" />
+              Kill Leaderboard
+            </button>
+            <button
+              onClick={() => setActiveTab('resultats')}
+              className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${
+                activeTab === 'resultats'
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-400 hover:text-white hover:bg-white/20'
+              }`}
+            >
+              <TrendingUp className="w-5 h-5" />
+              Résultats détaillés
+            </button>
+          </div>
+        </div>
+        {/* Contenu des onglets */}
+        {activeTab === 'classement' && (
+          <>
+            {/* Statistiques globales */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
             <div className="flex items-center space-x-3">
               <Users className="w-8 h-8 text-blue-400" />
@@ -703,68 +785,150 @@ export default function ClassementFinal() {
           </div>
         )}
 
-        {/* Classement complet */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
-          <div className="p-6 border-b border-white/20">
-            <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
-              <Trophy className="w-6 h-6 text-yellow-500" />
-              <span>Classement Complet</span>
-            </h2>
+            {/* Classement complet */}
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
+              <div className="p-6 border-b border-white/20">
+                <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+                  <Trophy className="w-6 h-6 text-yellow-500" />
+                  <span>Classement Complet</span>
+                </h2>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/20">
+                      <th className="text-left py-4 px-6 text-white/80 font-medium">Rang</th>
+                      <th className="text-left py-4 px-6 text-white/80 font-medium">Équipe</th>
+                      <th className="text-center py-4 px-6 text-white/80 font-medium">Points</th>
+                      <th className="text-center py-4 px-6 text-white/80 font-medium">Kills</th>
+                      <th className="text-center py-4 px-6 text-white/80 font-medium">Parties</th>
+                      <th className="text-center py-4 px-6 text-white/80 font-medium">Moyenne</th>
+                      <th className="text-center py-4 px-6 text-white/80 font-medium">Meilleur rang</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankings.map((team, index) => (
+                      <tr 
+                        key={team.teamId} 
+                        className={`border-b border-white/10 hover:bg-white/5 transition-colors ${
+                          index < 3 ? 'bg-white/5' : ''
+                        }`}
+                      >
+                        <td className="py-4 px-6">
+                          <div className="flex items-center space-x-3">
+                            {getPodiumIcon(team.position)}
+                            <span className="text-white font-bold text-lg">#{team.position}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="text-white font-medium text-lg">{team.teamName}</span>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className="text-yellow-400 font-bold text-xl">{team.totalPoints}</span>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className="text-red-400 font-medium">{team.totalKills}</span>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className="text-white/80">{team.gamesPlayed}</span>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className="text-blue-400 font-medium">{team.averagePoints.toFixed(1)}</span>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className="text-green-400 font-bold">
+                            {team.bestPlacement === 25 ? '-' : `#${team.bestPlacement}`}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Kill Leaderboard */}
+        {activeTab === 'kills' && (
+          <div className="mb-12">
+            {loadingKillLeaderboard ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-red-500 mx-auto mb-4"></div>
+                <p className="text-white text-xl">Chargement du Kill Leaderboard...</p>
+              </div>
+            ) : killLeaderboard ? (
+              <KillLeaderboardView leaderboard={killLeaderboard} />
+            ) : (
+              <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-12 border border-gray-700 text-center">
+                <Target className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                <p className="text-gray-300 text-xl">Aucune donnée de kills disponible pour ce tournoi.</p>
+              </div>
+            )}
           </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/20">
-                  <th className="text-left py-4 px-6 text-white/80 font-medium">Rang</th>
-                  <th className="text-left py-4 px-6 text-white/80 font-medium">Équipe</th>
-                  <th className="text-center py-4 px-6 text-white/80 font-medium">Points</th>
-                  <th className="text-center py-4 px-6 text-white/80 font-medium">Kills</th>
-                  <th className="text-center py-4 px-6 text-white/80 font-medium">Parties</th>
-                  <th className="text-center py-4 px-6 text-white/80 font-medium">Moyenne</th>
-                  <th className="text-center py-4 px-6 text-white/80 font-medium">Meilleur rang</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rankings.map((team, index) => (
-                  <tr 
-                    key={team.teamId} 
-                    className={`border-b border-white/10 hover:bg-white/5 transition-colors ${
-                      index < 3 ? 'bg-white/5' : ''
-                    }`}
-                  >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-3">
-                        {getPodiumIcon(team.position)}
-                        <span className="text-white font-bold text-lg">#{team.position}</span>
+        )}
+
+        {/* Résultats détaillés */}
+        {activeTab === 'resultats' && (
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
+            <div className="p-6 border-b border-white/20">
+              <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+                <TrendingUp className="w-6 h-6 text-blue-500" />
+                <span>Résultats de toutes les parties</span>
+              </h2>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-6">
+                {gameResults.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">Aucun résultat disponible</p>
+                ) : (
+                  gameResults.map((result) => {
+                    const team = teams.find(t => t.id === result.teamId);
+                    if (!team) return null;
+                    
+                    return (
+                      <div 
+                        key={result.id}
+                        className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg p-3 flex items-center justify-center min-w-[60px]">
+                              <span className="text-white font-black text-xl">#{result.placement}</span>
+                            </div>
+                            <div>
+                              <h3 className="text-white font-bold text-lg">{team.name}</h3>
+                              <p className="text-gray-400 text-sm">
+                                Partie {gameResults.filter(r => r.teamId === result.teamId).indexOf(result) + 1}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-4">
+                            <div className="bg-yellow-500/20 rounded-lg px-4 py-2 border border-yellow-500/30">
+                              <p className="text-yellow-400 text-xs font-semibold uppercase">Points</p>
+                              <p className="text-white font-black text-xl">{result.points}</p>
+                            </div>
+                            <div className="bg-red-500/20 rounded-lg px-4 py-2 border border-red-500/30">
+                              <p className="text-red-400 text-xs font-semibold uppercase">Kills</p>
+                              <p className="text-white font-black text-xl">{result.kills}</p>
+                            </div>
+                            <div className="bg-blue-500/20 rounded-lg px-4 py-2 border border-blue-500/30">
+                              <p className="text-blue-400 text-xs font-semibold uppercase">Placement</p>
+                              <p className="text-white font-black text-xl">#{result.placement}</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-white font-medium text-lg">{team.teamName}</span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className="text-yellow-400 font-bold text-xl">{team.totalPoints}</span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className="text-red-400 font-medium">{team.totalKills}</span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className="text-white/80">{team.gamesPlayed}</span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className="text-blue-400 font-medium">{team.averagePoints.toFixed(1)}</span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className="text-green-400 font-bold">
-                        {team.bestPlacement === 25 ? '-' : `#${team.bestPlacement}`}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Message de félicitations */}
         <div className="mt-12 text-center">
@@ -780,6 +944,7 @@ export default function ClassementFinal() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

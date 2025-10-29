@@ -5,19 +5,23 @@ import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Team } from '@/types'
 import { TournamentService } from '@/services/tournamentService'
+import { GameModeUtils } from '@/types/game-modes'
 import {
     Users,
     Crown,
     CheckCircle,
     Trophy
 } from 'lucide-react'
-import Link from 'next/link'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
 
 export default function ValidatedTeamsPage() {
     const [teams, setTeams] = useState<Team[]>([])
     const [totalTeams, setTotalTeams] = useState(0)
     const [loading, setLoading] = useState(true)
     const [tournamentName, setTournamentName] = useState<string>('')
+    const [gameModeName, setGameModeName] = useState<string>('Battle Royale Squad')
+    const [teamSize, setTeamSize] = useState<number>(4)
     const [maxTeams, setMaxTeams] = useState<number>(50)
 
     useEffect(() => {
@@ -35,6 +39,11 @@ export default function ValidatedTeamsPage() {
 
                 setTournamentName(activeTournament.name)
                 setMaxTeams(activeTournament.settings?.maxTeams || 50)
+                
+                const modeName = GameModeUtils.getDisplayName(activeTournament.gameMode)
+                const size = GameModeUtils.getTeamSize(activeTournament.gameMode)
+                setGameModeName(modeName)
+                setTeamSize(size)
 
                 // S'abonner aux équipes du tournoi actif
                 unsubscribe = onSnapshot(
@@ -95,54 +104,45 @@ export default function ValidatedTeamsPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-            <div className="container mx-auto px-4 py-8">
+            <Navbar />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <Link
-                        href="/"
-                        className="inline-flex items-center text-blue-300 hover:text-blue-200 mb-4 transition-colors"
-                    >
-                        ← Retour à l&apos;accueil
-                    </Link>
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                        <Trophy className="h-8 w-8 text-yellow-400" />
-                        <h1 className="text-4xl md:text-5xl font-bold text-white">
-                            {tournamentName || 'Tournoi'}
-                        </h1>
+                <div className="text-center mb-12">
+                    <div className="flex justify-center mb-6">
+                        <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                            <CheckCircle className="w-10 h-10 text-white" />
+                        </div>
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-semibold text-blue-200 mb-4">
-                        Équipes Inscrites
-                    </h2>
-                    <p className="text-xl text-blue-200 mb-2">
-                        {teams.length} équipe{teams.length > 1 ? 's' : ''} qualifiée{teams.length > 1 ? 's' : ''}
+                    <h1 className="text-4xl lg:text-6xl font-bold mb-4">
+                        <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            Équipes Validées
+                        </span>
+                        <br />
+                        <span className="text-white">{gameModeName}</span>
+                    </h1>
+                    <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                        {tournamentName || 'Tournoi Battle Royale'}
                     </p>
-
-                    {/* Statistiques d'inscription */}
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">
-                        <div className="flex items-center text-green-400">
-                            <CheckCircle className="h-5 w-5 mr-2" />
-                            <span>Toutes les équipes affichées sont officiellement validées</span>
+                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <div className="inline-flex items-center gap-2 bg-green-600/20 border border-green-500/30 rounded-full px-6 py-2">
+                            <CheckCircle className="w-5 h-5 text-green-400" />
+                            <span className="text-green-300 font-semibold">
+                                {teams.length} équipe{teams.length > 1 ? 's' : ''} validée{teams.length > 1 ? 's' : ''}
+                            </span>
                         </div>
-
-                        <div className="flex items-center gap-6">
-                            <div className="bg-blue-500/20 text-blue-300 px-4 py-2 rounded-lg border border-blue-500/30">
-                                <span className="text-sm">Total inscrites:</span>
-                                <span className="font-bold ml-1">{totalTeams}/{maxTeams}</span>
+                        <div className="inline-flex items-center gap-2 bg-blue-600/20 border border-blue-500/30 rounded-full px-6 py-2">
+                            <Trophy className="w-5 h-5 text-blue-400" />
+                            <span className="text-blue-300 font-semibold">
+                                {totalTeams} / {maxTeams} inscrites
+                            </span>
+                        </div>
+                        {totalTeams >= maxTeams && (
+                            <div className="inline-flex items-center gap-2 bg-red-600/20 border border-red-500/30 rounded-full px-6 py-2">
+                                <span className="text-red-300 font-bold text-sm">
+                                    COMPLET
+                                </span>
                             </div>
-
-                            {totalTeams < maxTeams && (
-                                <div className="bg-green-500/20 text-green-300 px-4 py-2 rounded-lg border border-green-500/30">
-                                    <span className="text-sm">Places restantes:</span>
-                                    <span className="font-bold ml-1">{maxTeams - totalTeams}</span>
-                                </div>
-                            )}
-
-                            {totalTeams >= maxTeams && (
-                                <div className="bg-red-500/20 text-red-300 px-4 py-2 rounded-lg border border-red-500/30">
-                                    <span className="text-sm font-bold">COMPLET</span>
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
                 </div>
 
@@ -190,44 +190,55 @@ export default function ValidatedTeamsPage() {
                                     </div>
                                 </div>
 
-                                {/* Joueurs */}
-                                <div className="mb-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center">
-                                            <Users className="h-4 w-4 text-blue-400 mr-2" />
-                                            <span className="text-blue-400 font-semibold">Équipe</span>
+                                {/* Joueurs - Affichage conditionnel selon la taille d'équipe */}
+                                {teamSize > 1 && (
+                                    <div className="mb-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center">
+                                                <Users className="h-4 w-4 text-blue-400 mr-2" />
+                                                <span className="text-blue-400 font-semibold">Équipe</span>
+                                            </div>
+                                            <span className="text-white text-sm">{team.players.length}/{teamSize}</span>
                                         </div>
-                                        <span className="text-white text-sm">{team.players.length}/4</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {team.players.slice(0, 3).map((player) => (
-                                            <div key={player.id} className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-white text-sm">{player.pseudo}</span>
-                                                    <span className="text-blue-200 text-xs">{player.country}</span>
+                                        <div className="space-y-2">
+                                            {team.players.slice(0, teamSize - 1).map((player) => (
+                                                <div key={player.id} className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-white text-sm">{player.pseudo}</span>
+                                                        <span className="text-blue-200 text-xs">{player.country}</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                        {team.players.length > 3 && (
-                                            <div className="text-center text-blue-300 text-sm">
-                                                +{team.players.length - 3} joueur{team.players.length - 3 > 1 ? 's' : ''}
-                                            </div>
-                                        )}
+                                            ))}
+                                            {team.players.length > (teamSize - 1) && (
+                                                <div className="text-center text-blue-300 text-sm">
+                                                    +{team.players.length - (teamSize - 1)} joueur{team.players.length - (teamSize - 1) > 1 ? 's' : ''}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Footer */}
                                 <div className="flex items-center justify-center pt-4 border-t border-white/10">
-                                    <div className="text-green-400 text-sm flex items-center">
-                                        <CheckCircle className="h-4 w-4 mr-1" />
-                                        {team.players.filter(p => p.status === 'validated').length} validés
-                                    </div>
+                                    {teamSize === 1 ? (
+                                        <div className="text-green-400 text-sm flex items-center">
+                                            <CheckCircle className="h-4 w-4 mr-1" />
+                                            Joueur validé
+                                        </div>
+                                    ) : (
+                                        <div className="text-green-400 text-sm flex items-center">
+                                            <CheckCircle className="h-4 w-4 mr-1" />
+                                            {team.players.filter(p => p.status === 'validated').length} validés
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+            
+            <Footer />
         </div>
     )
 }

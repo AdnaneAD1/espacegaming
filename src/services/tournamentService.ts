@@ -17,9 +17,9 @@ import { db } from '../lib/firebase';
 import { 
   Tournament, 
   TournamentResult, 
-  
   TournamentSettings 
 } from '@/types/tournament-multi';
+import { GameMode, GAME_MODES_CONFIG } from '@/types/game-modes';
 import { Team, Player } from '../types/index';
 import { GameResult } from '../types/tournament';
 
@@ -35,7 +35,7 @@ function convertTimestampToDate(timestamp: Date | Timestamp | null | undefined):
 
 export class TournamentService {
   
-  // Récupérer le tournoi actif
+  // Récupérer le tournoi actif (premier trouvé, pour compatibilité)
   static async getActiveTournament(): Promise<Tournament | null> {
     const q = query(
       collection(db, 'tournaments'),
@@ -60,34 +60,109 @@ export class TournamentService {
     } as Tournament;
   }
 
+  // Récupérer le tournoi BR actif
+  static async getActiveBRTournament(): Promise<Tournament | null> {
+    const q = query(
+      collection(db, 'tournaments'),
+      where('status', '==', 'active')
+    );
+    
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    
+    for (const docSnapshot of snapshot.docs) {
+      const data = docSnapshot.data();
+      const gameModeConfig = GAME_MODES_CONFIG[data.gameMode as GameMode];
+      
+      if (gameModeConfig.category === 'battle_royale') {
+        return {
+          id: docSnapshot.id,
+          ...data,
+          startDate: data.startDate?.toDate() || new Date(),
+          endDate: data.endDate?.toDate(),
+          deadline_register: data.deadline_register?.toDate(),
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date()
+        } as Tournament;
+      }
+    }
+    
+    return null;
+  }
+
+  // Récupérer le tournoi MP actif
+  static async getActiveMPTournament(): Promise<Tournament | null> {
+    const q = query(
+      collection(db, 'tournaments'),
+      where('status', '==', 'active')
+    );
+    
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    
+    for (const docSnapshot of snapshot.docs) {
+      const data = docSnapshot.data();
+      const gameModeConfig = GAME_MODES_CONFIG[data.gameMode as GameMode];
+      
+      if (gameModeConfig.category === 'multiplayer') {
+        return {
+          id: docSnapshot.id,
+          ...data,
+          startDate: data.startDate?.toDate() || new Date(),
+          endDate: data.endDate?.toDate(),
+          deadline_register: data.deadline_register?.toDate(),
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date()
+        } as Tournament;
+      }
+    }
+    
+    return null;
+  }
+
+  // Récupérer tous les tournois actifs (BR + MP)
+  static async getActiveTournaments(): Promise<{ br: Tournament | null; mp: Tournament | null }> {
+    const [br, mp] = await Promise.all([
+      this.getActiveBRTournament(),
+      this.getActiveMPTournament()
+    ]);
+    
+    return { br, mp };
+  }
+
   // Créer un nouveau tournoi
   static async createTournament(
     name: string, 
     description?: string,
+    gameMode: GameMode = GameMode.BR_SQUAD,
     options?: {
       settings?: Partial<TournamentSettings>;
+      maxTeams?: number;
       startDate?: Date;
       endDate?: Date;
       deadline_register?: Date;
       date_result?: Date;
+      customFormat?: {
+        bestOf?: 3 | 5;
+        tournamentFormat: 'elimination_direct' | 'groups_then_elimination' | 'groups_only';
+        groupStage?: {
+          enabled: boolean;
+          teamsPerGroup?: number;
+          qualifiersPerGroup?: 1 | 2;
+          roundRobinInGroup?: boolean;
+        };
+      };
     }
   ): Promise<string> {
+    // Récupérer la configuration du mode de jeu
+    const gameModeConfig = GAME_MODES_CONFIG[gameMode];
+    
     const defaultSettings: TournamentSettings = {
-      maxTeams: 25,
-      maxGamesPerTeam: 3,
+      maxTeams: options?.maxTeams || 50, // Utiliser la valeur fournie ou 50 par défaut
+      maxGamesPerTeam: gameModeConfig.settings.gamesPerTeam,
       pointsSystem: {
-        placement: {
-          1: 25,   // Top 1
-          2: 20,   // Top 2  
-          3: 17,   // Top 3
-          4: 15,   // Top 4
-          5: 12, 6: 12, 7: 12, 8: 12, 9: 12, 10: 12,  // Top 5-10
-          11: 10, 12: 10, 13: 10, 14: 10, 15: 10, 16: 10, 17: 10, 18: 10, 19: 10, 20: 10,  // Top 11-20
-          21: 8, 22: 8, 23: 8, 24: 8, 25: 8, 26: 8, 27: 8, 28: 8, 29: 8, 30: 8,  // Top 21-30
-          31: 5, 32: 5, 33: 5, 34: 5, 35: 5, 36: 5, 37: 5, 38: 5, 39: 5, 40: 5,  // Top 31-40
-          41: 3, 42: 3, 43: 3, 44: 3, 45: 3, 46: 3, 47: 3, 48: 3, 49: 3, 50: 3   // Top 41-50
-        },
-        killPoints: 10
+        placement: gameModeConfig.pointsSystem.placement,
+        killPoints: gameModeConfig.pointsSystem.killPoints
       },
       registrationOpen: true,
       resultsVisible: false
@@ -96,6 +171,7 @@ export class TournamentService {
     const newTournament: Omit<Tournament, 'id'> = {
       name,
       description: description || '',
+      gameMode,
       status: 'draft',
       startDate: options?.startDate || new Date(),
       endDate: options?.endDate,
@@ -104,16 +180,21 @@ export class TournamentService {
       createdAt: new Date(),
       updatedAt: new Date(),
       settings: { ...defaultSettings, ...options?.settings },
+      ...(options?.customFormat && { customFormat: options.customFormat }),
       stats: {
         totalTeams: 0,
         totalGames: 0,
-        totalKills: 0,
-        averagePointsPerGame: 0
+        averageKillsPerGame: 0
       }
     };
 
+    // Nettoyer les valeurs undefined avant l'envoi à Firestore
+    const cleanTournament = Object.fromEntries(
+      Object.entries(newTournament).filter(([, value]) => value !== undefined)
+    );
+
     const docRef = await addDoc(collection(db, 'tournaments'), {
-      ...newTournament,
+      ...cleanTournament,
       startDate: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -157,32 +238,51 @@ export class TournamentService {
     await batch.commit();
   }
 
-  // Activer un tournoi (désactive les autres)
+  // Activer un tournoi (désactive les autres du même type)
   static async activateTournament(tournamentId: string): Promise<void> {
     const batch = writeBatch(db);
 
-    // Désactiver tous les tournois actifs
+    // Récupérer le tournoi à activer pour connaître son gameMode
+    const tournamentToActivateRef = doc(db, 'tournaments', tournamentId);
+    const tournamentToActivateDoc = await getDoc(tournamentToActivateRef);
+    
+    if (!tournamentToActivateDoc.exists()) {
+      throw new Error('Tournoi introuvable');
+    }
+    
+    const tournamentToActivate = tournamentToActivateDoc.data() as Tournament;
+    const gameModeConfig = GAME_MODES_CONFIG[tournamentToActivate.gameMode];
+    const isBRMode = gameModeConfig.category === 'battle_royale';
+
+    // Désactiver tous les tournois actifs du même type (BR ou MP)
     const activeQuery = query(
       collection(db, 'tournaments'),
       where('status', '==', 'active')
     );
     const activeSnapshot = await getDocs(activeQuery);
     
-    activeSnapshot.docs.forEach(doc => {
-      batch.update(doc.ref, { 
-        status: 'completed',
-        updatedAt: serverTimestamp()
-      });
+    activeSnapshot.docs.forEach(docSnapshot => {
+      const activeTournament = docSnapshot.data() as Tournament;
+      const activeGameModeConfig = GAME_MODES_CONFIG[activeTournament.gameMode];
+      const isActiveBRMode = activeGameModeConfig.category === 'battle_royale';
+      
+      // Désactiver uniquement si c'est le même type (BR avec BR, MP avec MP)
+      if (isActiveBRMode === isBRMode) {
+        batch.update(docSnapshot.ref, { 
+          status: 'draft', // Repasser en brouillon au lieu de completed
+          updatedAt: serverTimestamp()
+        });
+      }
     });
 
     // Activer le tournoi sélectionné
-    const tournamentRef = doc(db, 'tournaments', tournamentId);
-    batch.update(tournamentRef, { 
+    batch.update(tournamentToActivateRef, { 
       status: 'active',
       updatedAt: serverTimestamp()
     });
 
     await batch.commit();
+    console.log(`✅ Tournoi ${tournamentToActivate.name} (${isBRMode ? 'BR' : 'MP'}) activé`);
   }
 
   // Terminer un tournoi actif (le marquer comme completed)
@@ -216,7 +316,8 @@ export class TournamentService {
       // 1. Créer le nouveau tournoi
       const tournamentId = await this.createTournament(
         tournamentName,
-        'Tournoi migré depuis l\'ancienne structure'
+        'Tournoi migré depuis l\'ancienne structure',
+        GameMode.BR_SQUAD // Mode par défaut pour les tournois migrés
       );
 
       console.log(`✅ Tournoi créé avec l'ID: ${tournamentId}`);
@@ -316,6 +417,7 @@ export class TournamentService {
 
         const newResult: Omit<TournamentResult, 'id'> = {
           tournamentId,
+          gameMode: GameMode.BR_SQUAD, // Mode du tournoi migré
           gameNumber: gameNumber++,
           teamId: newTeamId, // Utiliser le nouveau ID
           teamName: resultData.teamName || 'Équipe inconnue',

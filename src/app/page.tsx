@@ -5,54 +5,135 @@ import Link from 'next/link';
 import { Trophy, Users, Calendar, Clock, Star, Shield, Gamepad2, UserPlus, Award } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { getTimeUntilRegistrationEnd, isRegistrationOpen } from '@/lib/utils';
+import { isRegistrationOpen } from '@/lib/utils';
 import { TournamentService } from '@/services/tournamentService';
+import { GameModeUtils } from '@/types/game-modes';
+import { Tournament } from '@/types/tournament-multi';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Team } from '@/types';
 
 export default function Home() {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [brTimeLeft, setBrTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [mpTimeLeft, setMpTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isClient, setIsClient] = useState(false);
   const [isResultsAvailable, setIsResultsAvailable] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
+  const [brTournament, setBrTournament] = useState<Tournament | null>(null);
+  const [mpTournament, setMpTournament] = useState<Tournament | null>(null);
+  const [tournamentsLoading, setTournamentsLoading] = useState(true);
+  const [brTeamsCount, setBrTeamsCount] = useState(0);
+  const [mpTeamsCount, setMpTeamsCount] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
     
-    // Fonction pour mettre à jour le temps restant
-    const updateTimeLeft = async () => {
-      try {
-        const time = await getTimeUntilRegistrationEnd();
-        setTimeLeft(time);
-      } catch (error) {
-        console.error('Erreur lors du calcul du temps restant:', error);
+    // Fonction pour calculer le temps restant pour un tournoi spécifique
+    const calculateTimeLeft = (deadline?: Date) => {
+      if (!deadline) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      
+      const now = new Date();
+      const target = new Date(deadline);
+      const difference = target.getTime() - now.getTime();
+
+      if (difference <= 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+
+      return {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      };
+    };
+    
+    // Fonction pour mettre à jour les temps restants
+    const updateTimers = () => {
+      if (brTournament?.deadline_register) {
+        setBrTimeLeft(calculateTimeLeft(brTournament.deadline_register));
+      }
+      if (mpTournament?.deadline_register) {
+        setMpTimeLeft(calculateTimeLeft(mpTournament.deadline_register));
       }
     };
 
     // Mise à jour initiale
-    updateTimeLeft();
+    updateTimers();
     
     // Timer pour mettre à jour toutes les secondes
-    const timer = setInterval(updateTimeLeft, 1000);
+    const timer = setInterval(updateTimers, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [brTournament, mpTournament]);
 
-  // Vérifier l'ouverture des inscriptions
+  // Charger les tournois BR et MP actifs
   useEffect(() => {
-    const checkRegistrationStatus = async () => {
+    const loadActiveTournaments = async () => {
       try {
+        const [brTournamentData, mpTournamentData] = await Promise.all([
+          TournamentService.getActiveBRTournament(),
+          TournamentService.getActiveMPTournament()
+        ]);
+        
+        setBrTournament(brTournamentData);
+        setMpTournament(mpTournamentData);
+        
         const isOpen = await isRegistrationOpen();
         setRegistrationOpen(isOpen);
       } catch (error) {
-        console.error('Erreur lors de la vérification des inscriptions:', error);
+        console.error('Erreur lors du chargement des tournois:', error);
         setRegistrationOpen(false);
+      } finally {
+        setTournamentsLoading(false);
       }
     };
 
-    checkRegistrationStatus();
+    loadActiveTournaments();
     // Vérifier toutes les minutes
-    const interval = setInterval(checkRegistrationStatus, 60000);
+    const interval = setInterval(loadActiveTournaments, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Compter les équipes inscrites pour BR
+  useEffect(() => {
+    if (!brTournament?.id) return;
+
+    const unsubscribe = onSnapshot(
+      query(collection(db, `tournaments/${brTournament.id}/teams`)),
+      (snapshot) => {
+        const teams = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }) as Team)
+          .filter(team => team.status !== 'rejected');
+        setBrTeamsCount(teams.length);
+      },
+      (error) => {
+        console.error('Erreur lors du comptage des équipes BR:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [brTournament]);
+
+  // Compter les équipes inscrites pour MP
+  useEffect(() => {
+    if (!mpTournament?.id) return;
+
+    const unsubscribe = onSnapshot(
+      query(collection(db, `tournaments/${mpTournament.id}/teams`)),
+      (snapshot) => {
+        const teams = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }) as Team)
+          .filter(team => team.status !== 'rejected');
+        setMpTeamsCount(teams.length);
+      },
+      (error) => {
+        console.error('Erreur lors du comptage des équipes MP:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [mpTournament]);
 
   // Vérifier si les résultats sont disponibles
   useEffect(() => {
@@ -87,24 +168,74 @@ export default function Home() {
       <section className="relative overflow-hidden py-20 lg:py-32">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+          <div className="text-center mb-12">
             <h1 className="text-4xl lg:text-6xl font-bold mb-6">
               <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Tournoi COD Mobile
+                Tournois COD Mobile
               </span>
-              <br />
-              <span className="text-white">Battle Royale Squad</span>
             </h1>
-            <p className="text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-              Tournoi officiel le <strong>samedi 06 septembre</strong> à <strong>22h (Heure du Benin)</strong>
-              <br />
-              Équipes de <strong>4 joueurs fixes</strong>, aucun remplacement après formation. Récompenses :
-              <span className="text-yellow-400 font-bold"> 100.000 F </span>
-              pour les 3 premières teams et le top killer
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Participez aux tournois Battle Royale et Multijoueur et remportez des récompenses !
             </p>
+          </div>
 
-            {/* Compteur ou Résultats */}
-            {isClient && (
+          {/* Grille des tournois actifs */}
+          {tournamentsLoading ? (
+            <div className="text-center text-white text-xl">Chargement des tournois...</div>
+          ) : (brTournament || mpTournament) ? (
+            <div className={`grid gap-8 ${brTournament && mpTournament ? 'lg:grid-cols-2' : 'max-w-2xl mx-auto'}`}>
+              {/* Carte Battle Royale */}
+              {brTournament && (
+                <TournamentCard 
+                  tournament={brTournament}
+                  type="br"
+                  isClient={isClient}
+                  timeLeft={brTimeLeft}
+                  registrationOpen={registrationOpen}
+                  isResultsAvailable={isResultsAvailable}
+                  teamsCount={brTeamsCount}
+                />
+              )}
+
+              {/* Carte Multijoueur */}
+              {mpTournament && (
+                <TournamentCard 
+                  tournament={mpTournament}
+                  type="mp"
+                  isClient={isClient}
+                  timeLeft={mpTimeLeft}
+                  registrationOpen={registrationOpen}
+                  isResultsAvailable={isResultsAvailable}
+                  teamsCount={mpTeamsCount}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-12 border border-gray-700 text-center max-w-2xl mx-auto">
+              <h3 className="text-2xl font-bold text-white mb-4">Aucun tournoi actif</h3>
+              <p className="text-gray-300 mb-6">
+                Aucun tournoi n&apos;est actuellement ouvert aux inscriptions.
+                <br />
+                Restez connectés pour les prochains tournois !
+              </p>
+              <Link
+                href="/historique"
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              >
+                <Clock className="w-5 h-5" />
+                Voir l&apos;historique
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Section Comment participer - Affichée seulement si au moins un tournoi actif */}
+      {(brTournament || mpTournament) && (
+        <section className="py-16 bg-gray-800/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Ancien code commenté - à supprimer plus tard */}
+            {false && isClient && (
               <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-6 mb-8 max-w-2xl mx-auto border border-gray-700">
                 {isResultsAvailable ? (
                   /* Résultats disponibles */
@@ -136,10 +267,10 @@ export default function Home() {
                     </h3>
                     <div className="grid grid-cols-4 gap-4">
                       {[
-                        { label: 'Jours', value: timeLeft.days },
-                        { label: 'Heures', value: timeLeft.hours },
-                        { label: 'Minutes', value: timeLeft.minutes },
-                        { label: 'Secondes', value: timeLeft.seconds },
+                        { label: 'Jours', value: brTimeLeft.days },
+                        { label: 'Heures', value: brTimeLeft.hours },
+                        { label: 'Minutes', value: brTimeLeft.minutes },
+                        { label: 'Secondes', value: brTimeLeft.seconds },
                       ].map((item) => (
                         <div key={item.label} className="text-center">
                           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-3 mb-2">
@@ -230,50 +361,120 @@ export default function Home() {
             )}
 
             {/* Boutons d'action responsive */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto px-4">
-              {registrationOpen ? (
-                <>
+            <div className="space-y-6">
+              {/* Boutons Inscription */}
+              <div>
+                <h3 className="text-lg font-semibold text-white text-center mb-3">Créer une équipe</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto px-4">
+                  {registrationOpen ? (
+                    <>
+                      <Link
+                        href="/inscription"
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                      >
+                        <UserPlus className="w-5 h-5 flex-shrink-0" />
+                        <span className="truncate">Battle Royale</span>
+                      </Link>
+                      <Link
+                        href="/inscription/mp"
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                      >
+                        <UserPlus className="w-5 h-5 flex-shrink-0" />
+                        <span className="truncate">Multijoueur</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                        <UserPlus className="w-5 h-5 flex-shrink-0" />
+                        <span className="truncate">BR (Fermé)</span>
+                      </div>
+                      <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                        <UserPlus className="w-5 h-5 flex-shrink-0" />
+                        <span className="truncate">MP (Fermé)</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Boutons Rejoindre */}
+              <div>
+                <h3 className="text-lg font-semibold text-white text-center mb-3">Rejoindre une équipe</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto px-4">
+                  {registrationOpen ? (
+                    <>
+                      <Link
+                        href="/rejoindre"
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                      >
+                        <Users className="w-5 h-5 flex-shrink-0" />
+                        <span className="truncate">Battle Royale</span>
+                      </Link>
+                      <Link
+                        href="/rejoindre-mp"
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                      >
+                        <Users className="w-5 h-5 flex-shrink-0" />
+                        <span className="truncate">Multijoueur</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                        <Users className="w-5 h-5 flex-shrink-0" />
+                        <span className="truncate">BR (Fermé)</span>
+                      </div>
+                      <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
+                        <Users className="w-5 h-5 flex-shrink-0" />
+                        <span className="truncate">MP (Fermé)</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Autres boutons */}
+              <div>
+                <h3 className="text-lg font-semibold text-white text-center mb-3">Équipes inscrites</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto px-4">
                   <Link
-                    href="/inscription"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                    href="/equipes-validees"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
                   >
-                    <UserPlus className="w-5 h-5 flex-shrink-0" />
-                    <span className="truncate">Créer une équipe</span>
+                    <Award className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">Battle Royale</span>
                   </Link>
                   <Link
-                    href="/rejoindre"
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                    href="/equipes-validees/mp"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
                   >
-                    <Users className="w-5 h-5 flex-shrink-0" />
-                    <span className="truncate">Rejoindre équipe</span>
+                    <Award className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">Multijoueur</span>
                   </Link>
-                </>
-              ) : (
-                <>
-                  <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
-                    <UserPlus className="w-5 h-5 flex-shrink-0" />
-                    <span className="truncate">Créer équipe (Fermé)</span>
-                  </div>
-                  <div className="bg-gray-600 text-gray-300 px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg cursor-not-allowed flex items-center justify-center gap-2">
-                    <Users className="w-5 h-5 flex-shrink-0" />
-                    <span className="truncate">Rejoindre (Fermé)</span>
-                  </div>
-                </>
-              )}
-              <Link
-                href="/equipes-validees"
-                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
-              >
-                <Award className="w-5 h-5 flex-shrink-0" />
-                <span className="truncate">Équipes inscrites</span>
-              </Link>
-              <Link
-                href="/regles"
-                className="bg-gray-800 text-white px-4 sm:px-6 lg:px-8 py-4 rounded-xl font-semibold text-base lg:text-lg hover:bg-gray-700 transition-all duration-200 border border-gray-700 flex items-center justify-center gap-2"
-              >
-                <Shield className="w-5 h-5 flex-shrink-0" />
-                <span className="truncate">Voir les règles</span>
-              </Link>
+                </div>
+              </div>
+
+              {/* Boutons Règles */}
+              <div>
+                <h3 className="text-lg font-semibold text-white text-center mb-3">Règles du tournoi</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto px-4">
+                  <Link
+                    href="/regles"
+                    className="bg-gray-800 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:bg-gray-700 transition-all duration-200 border border-gray-700 flex items-center justify-center gap-2"
+                  >
+                    <Shield className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">Battle Royale</span>
+                  </Link>
+                  <Link
+                    href="/regles/mp"
+                    className="bg-gray-800 text-white px-4 sm:px-6 py-4 rounded-xl font-semibold text-base lg:text-lg hover:bg-gray-700 transition-all duration-200 border border-gray-700 flex items-center justify-center gap-2"
+                  >
+                    <Shield className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate">Multijoueur</span>
+                  </Link>
+                </div>
+              </div>
             </div>
             
             {/* Bouton de suivi séparé pour éviter le débordement */}
@@ -287,8 +488,8 @@ export default function Home() {
               </Link>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Section Comment participer */}
       <section className="py-16 bg-gray-800/30">
@@ -298,7 +499,7 @@ export default function Home() {
               Comment participer ?
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Deux façons de rejoindre le tournoi selon votre situation
+              Deux façons de rejoindre les tournois selon votre situation
             </p>
           </div>
 
@@ -311,7 +512,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-4">Créer une équipe</h3>
                 <p className="text-gray-400 mb-6">
-                  Vous avez déjà des coéquipiers ? Créez votre équipe et obtenez un code unique à partager avec vos amis.
+                  Vous avez déjà des coéquipiers ? Créez votre équipe (BR ou MP) et obtenez un code unique à partager avec vos amis.
                 </p>
                 <ul className="text-left text-gray-300 mb-8 space-y-2">
                   <li className="flex items-center">
@@ -328,15 +529,23 @@ export default function Home() {
                   </li>
                   <li className="flex items-center">
                     <Star className="w-4 h-4 text-yellow-400 mr-2" />
-                    Maximum 4 joueurs par équipe
+                    4 joueurs (BR) ou 5 joueurs (MP)
                   </li>
                 </ul>
-                <Link
-                  href="/inscription"
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 inline-block text-center"
-                >
-                  Créer mon équipe
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href="/inscription"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-center"
+                  >
+                    Battle Royale
+                  </Link>
+                  <Link
+                    href="/inscription/mp"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-center"
+                  >
+                    Multijoueur
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -368,12 +577,20 @@ export default function Home() {
                     Validation par les administrateurs
                   </li>
                 </ul>
-                <Link
-                  href="/rejoindre"
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 inline-block text-center"
-                >
-                  Rejoindre une équipe
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href="/rejoindre"
+                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-center"
+                  >
+                    Battle Royale
+                  </Link>
+                  <Link
+                    href="/rejoindre-mp"
+                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-center"
+                  >
+                    Multijoueur
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -387,10 +604,10 @@ export default function Home() {
               <div>
                 <h4 className="text-lg font-semibold text-yellow-400 mb-2">Important à savoir</h4>
                 <ul className="text-gray-300 space-y-1 text-sm">
-                  <li>• Une équipe doit avoir minimum 3 joueurs validés pour participer</li>
+                  <li>• Une équipe doit avoir minimum 3 joueurs validés (BR) ou 4 joueurs (MP) pour participer</li>
                   <li>• Chaque joueur doit uploader une vidéo de device check</li>
                   <li>• La validation des joueurs se fait manuellement par les administrateurs</li>
-                  <li>• Les inscriptions ferment le <strong>31 août 2025</strong></li>
+                  <li>• Vérifiez les dates d&apos;inscription pour chaque mode de jeu</li>
                 </ul>
               </div>
             </div>
@@ -406,7 +623,7 @@ export default function Home() {
               Informations du tournoi
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Découvrez tous les détails de notre tournoi Battle Royale Squad
+              Découvrez tous les détails de nos tournois Battle Royale et Multijoueur
             </p>
           </div>
 
@@ -414,26 +631,26 @@ export default function Home() {
             {[
               {
                 icon: Trophy,
-                title: "Récompense",
-                description: "100.000 F de base à partager par les 3 premières teams et le top killer",
+                title: "Récompenses",
+                description: "Récompenses attractives pour les gagnants de chaque mode de jeu",
                 color: "from-yellow-500 to-orange-500"
               },
               {
                 icon: Users,
-                title: "Format",
-                description: "Battle Royale Squad de 4 joueurs • Aucun remplacement",
+                title: "Formats",
+                description: "Battle Royale Squad (4 joueurs) • Multijoueur (5 joueurs)",
                 color: "from-blue-500 to-purple-500"
               },
               {
                 icon: Calendar,
-                title: "Date du tournoi",
-                description: "Samedi 06 septembre — 22h (Heure Bénin)",
+                title: "Dates des tournois",
+                description: "Consultez les cartes de tournois ci-dessus pour les dates exactes",
                 color: "from-green-500 to-emerald-500"
               },
               {
                 icon: Shield,
-                title: "Inscription",
-                description: "Jusqu'au 31 août 2025",
+                title: "Inscriptions",
+                description: "Ouvertes selon les périodes de chaque tournoi",
                 color: "from-red-500 to-pink-500"
               }
             ].map((item, index) => {
@@ -462,8 +679,8 @@ export default function Home() {
               </h2>
               <p className="text-gray-400 text-lg mb-6">
                 Espace Gaming CODM est une communauté passionnée de Call of Duty Mobile,
-                fondée en 2022. Nous organisons régulièrement des tournois pour offrir
-                aux joueurs francophones une plateforme compétitive de qualité.
+                fondée en 2022. Nous organisons régulièrement des tournois Battle Royale et Multijoueur
+                pour offrir aux joueurs francophones une plateforme compétitive de qualité.
               </p>
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center">
@@ -543,6 +760,149 @@ export default function Home() {
       </section>
 
       <Footer />
+    </div>
+  );
+}
+
+// Composant pour afficher une carte de tournoi
+interface TournamentCardProps {
+  tournament: Tournament;
+  type: 'br' | 'mp';
+  isClient: boolean;
+  timeLeft: { days: number; hours: number; minutes: number; seconds: number };
+  registrationOpen: boolean | null;
+  isResultsAvailable: boolean;
+  teamsCount: number;
+}
+
+function TournamentCard({ tournament, type, isClient, timeLeft, registrationOpen, teamsCount }: TournamentCardProps) {
+  const gameModeName = GameModeUtils.getDisplayName(tournament.gameMode);
+  const teamSize = GameModeUtils.getTeamSize(tournament.gameMode);
+  const isBR = type === 'br';
+  const maxTeams = tournament.settings?.maxTeams || 50;
+  const placesRestantes = Math.max(0, maxTeams - teamsCount);
+  
+  // Vérifier si les inscriptions sont ouvertes pour ce tournoi
+  const isRegistrationOpenForTournament = registrationOpen && tournament.deadline_register && new Date() < new Date(tournament.deadline_register);
+
+  return (
+    <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
+      {/* Header */}
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 mb-4">
+          {isBR ? <Gamepad2 className="w-8 h-8 text-white" /> : <Trophy className="w-8 h-8 text-white" />}
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          {isBR ? 'Battle Royale' : 'Multijoueur'}
+        </h2>
+        <p className="text-blue-300 font-semibold">{gameModeName}</p>
+        <p className="text-gray-400 text-sm mt-1">
+          {teamSize === 1 ? 'Solo' : `${teamSize} joueurs par équipe`}
+        </p>
+        <div className="mt-3 inline-flex items-center gap-2 bg-blue-600/20 border border-blue-500/30 rounded-full px-4 py-1.5">
+          <Users className="w-4 h-4 text-blue-400" />
+          <span className="text-blue-300 text-sm font-semibold">
+            {placesRestantes} place{placesRestantes > 1 ? 's' : ''} restante{placesRestantes > 1 ? 's' : ''}
+          </span>
+        </div>
+        <p className="text-gray-500 text-xs mt-2">
+          {teamsCount} / {maxTeams} équipes inscrites
+        </p>
+      </div>
+
+      {/* Compteur ou statut */}
+      {isClient && isRegistrationOpenForTournament ? (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-white mb-3 text-center flex items-center justify-center gap-2">
+            <Clock className="w-4 h-4 text-green-400" />
+            Inscriptions ouvertes
+          </h3>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'J', value: timeLeft.days },
+              { label: 'H', value: timeLeft.hours },
+              { label: 'M', value: timeLeft.minutes },
+              { label: 'S', value: timeLeft.seconds },
+            ].map((item) => (
+              <div key={item.label} className="text-center">
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-2 mb-1">
+                  <span className="text-xl font-bold text-white">{item.value.toString().padStart(2, '0')}</span>
+                </div>
+                <span className="text-xs text-gray-400">{item.label}</span>
+              </div>
+            ))}
+          </div>
+          {tournament.deadline_register && (
+            <p className="text-center text-gray-400 text-xs mt-3">
+              Fin des inscriptions : <span className="text-white font-semibold">
+                {new Date(tournament.deadline_register).toLocaleDateString('fr-FR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })} à {new Date(tournament.deadline_register).toLocaleTimeString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="mb-6 text-center">
+          <p className="text-red-400 font-semibold">Inscriptions fermées</p>
+          {tournament.deadline_register && (
+            <p className="text-gray-400 text-xs mt-2">
+              Clôturées le {new Date(tournament.deadline_register).toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })} à {new Date(tournament.deadline_register).toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Boutons d'action */}
+      <div className="space-y-3">
+        {isRegistrationOpenForTournament ? (
+          <>
+            <Link
+              href={isBR ? '/inscription' : '/inscription/mp'}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              <UserPlus className="w-5 h-5" />
+              S&apos;inscrire
+            </Link>
+            {teamSize > 1 && (
+              <Link
+                href={isBR ? "/rejoindre" : "/rejoindre-mp"}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                <Users className="w-5 h-5" />
+                Rejoindre
+              </Link>
+            )}
+          </>
+        ) : (
+          <Link
+            href={isBR ? '/classement-final' : '/classement-final/mp'}
+            className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            <Trophy className="w-5 h-5" />
+            Voir le classement
+          </Link>
+        )}
+        <Link
+          href={isBR ? '/equipes-validees' : '/equipes-validees/mp'}
+          className="w-full bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+        >
+          <Award className="w-5 h-5" />
+          Équipes inscrites
+        </Link>
+      </div>
     </div>
   );
 }

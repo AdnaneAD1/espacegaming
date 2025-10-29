@@ -11,18 +11,18 @@ import Footer from '@/components/Footer';
 import { TournamentService } from '@/services/tournamentService';
 import { GameModeUtils } from '@/types/game-modes';
 
-function ConfirmationPageContent() {
+function ConfirmationMPPageContent() {
     const searchParams = useSearchParams();
     const teamCode = searchParams.get('code');
     const [copied, setCopied] = useState(false);
-    const [teamSize, setTeamSize] = useState<number>(4);
-    const [gameModeName, setGameModeName] = useState<string>('Battle Royale Squad');
+    const [teamSize, setTeamSize] = useState<number>(5);
+    const [gameModeName, setGameModeName] = useState<string>('Multijoueur 5v5');
 
-    // Charger le mode de jeu du tournoi actif
+    // Charger le mode de jeu du tournoi MP actif
     useEffect(() => {
         const loadTournamentMode = async () => {
             try {
-                const tournament = await TournamentService.getActiveBRTournament();
+                const tournament = await TournamentService.getActiveMPTournament();
                 if (tournament) {
                     const size = GameModeUtils.getTeamSize(tournament.gameMode);
                     const modeName = GameModeUtils.getDisplayName(tournament.gameMode);
@@ -54,13 +54,13 @@ function ConfirmationPageContent() {
         if (teamCode && navigator.share) {
             try {
                 await navigator.share({
-                    title: 'Rejoindre mon équipe - Tournoi COD Mobile Battle Royale',
-                    text: `Rejoignez mon équipe avec le code: ${teamCode}`,
-                    url: `${window.location.origin}/rejoindre?code=${teamCode}`,
+                    title: 'Rejoindre mon équipe - Tournoi COD Mobile Multijoueur',
+                    text: `Rejoignez mon équipe ${gameModeName} avec le code: ${teamCode}`,
+                    url: `${window.location.origin}/rejoindre-mp?code=${teamCode}`,
                 });
             } catch {
                 // Fallback: copier le lien
-                const shareUrl = `${window.location.origin}/rejoindre?code=${teamCode}`;
+                const shareUrl = `${window.location.origin}/rejoindre-mp?code=${teamCode}`;
                 try {
                     await navigator.clipboard.writeText(shareUrl);
                     toast.success('Lien de partage copié !');
@@ -70,7 +70,7 @@ function ConfirmationPageContent() {
             }
         } else {
             // Fallback pour navigateurs qui ne supportent pas Web Share API
-            const shareUrl = `${window.location.origin}/rejoindre?code=${teamCode}`;
+            const shareUrl = `${window.location.origin}/rejoindre-mp?code=${teamCode}`;
             try {
                 await navigator.clipboard.writeText(shareUrl);
                 toast.success('Lien de partage copié !');
@@ -91,7 +91,7 @@ function ConfirmationPageContent() {
                             Il semble qu&apos;il y ait un problème avec votre inscription.
                         </p>
                         <Link
-                            href="/inscription"
+                            href="/inscription/mp"
                             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
                         >
                             Retour à l&apos;inscription
@@ -127,7 +127,7 @@ function ConfirmationPageContent() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Code d&apos;équipe */}
+                    {/* Code d'équipe */}
                     <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
                         <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
                             <Users className="w-6 h-6 mr-3 text-blue-400" />
@@ -175,7 +175,7 @@ function ConfirmationPageContent() {
                                 <>
                                     <p className="flex items-center">
                                         <span className="w-2 h-2 bg-blue-400 rounded-full mr-3"></span>
-                                        Partagez ce code avec d&apos;autres joueurs pour qu&apos;ils rejoignent votre équipe
+                                        Partagez ce code avec vos coéquipiers pour qu&apos;ils rejoignent
                                     </p>
                                     <p className="flex items-center">
                                         <span className="w-2 h-2 bg-green-400 rounded-full mr-3"></span>
@@ -183,7 +183,7 @@ function ConfirmationPageContent() {
                                     </p>
                                     <p className="flex items-center">
                                         <span className="w-2 h-2 bg-yellow-400 rounded-full mr-3"></span>
-                                        Les nouveaux membres peuvent rejoindre via la page &ldquo;Rejoindre&rdquo;
+                                        Votre équipe peut être incomplète, d&apos;autres peuvent rejoindre plus tard
                                     </p>
                                 </>
                             )}
@@ -219,8 +219,8 @@ function ConfirmationPageContent() {
                                     <div>
                                         <h3 className="text-lg font-semibold text-white mb-2">Compléter l&apos;équipe</h3>
                                         <p className="text-gray-400">
-                                            Si votre équipe n&apos;est pas complète, invitez d&apos;autres joueurs à rejoindre
-                                            avec le code d&apos;équipe. {teamSize === 2 ? 'Minimum 1 joueur validé requis' : `Minimum ${teamSize - 1} joueurs validés requis`}.
+                                            Votre équipe doit avoir au moins {teamSize === 2 ? '1 joueur validé' : `${teamSize - 1} joueurs validés`} pour participer.
+                                            Partagez le code d&apos;équipe pour que d&apos;autres joueurs rejoignent via la page &ldquo;Rejoindre&rdquo;.
                                         </p>
                                     </div>
                                 </div>
@@ -234,8 +234,8 @@ function ConfirmationPageContent() {
                                     <h3 className="text-lg font-semibold text-white mb-2">Participation au tournoi</h3>
                                     <p className="text-gray-400">
                                         {teamSize === 1 
-                                            ? 'Une fois votre inscription validée, vous recevrez les informations de connexion pour le tournoi.'
-                                            : 'Une fois votre équipe validée, vous recevrez les informations de connexion pour le tournoi.'
+                                            ? 'Une fois votre inscription validée, vous recevrez les informations de connexion et le planning des matchs.'
+                                            : 'Une fois votre équipe validée, vous recevrez les informations de connexion et le planning des matchs.'
                                         }
                                     </p>
                                 </div>
@@ -263,8 +263,8 @@ function ConfirmationPageContent() {
 
                     <p className="text-gray-400 text-sm max-w-2xl mx-auto">
                         {teamSize === 1 
-                            ? 'Gardez précieusement votre code ! Vous en aurez besoin pour suivre l’état de votre inscription.'
-                            : 'Gardez précieusement votre code d’équipe ! Vous en aurez besoin pour suivre l’état de votre équipe et pour que d’autres joueurs puissent vous rejoindre.'
+                            ? 'Gardez précieusement votre code ! Vous en aurez besoin pour suivre l\'état de votre inscription.'
+                            : 'Gardez précieusement votre code d\'équipe ! Vous en aurez besoin pour suivre l\'état de votre équipe et pour que d\'autres joueurs puissent vous rejoindre.'
                         }
                     </p>
                 </div>
@@ -278,8 +278,9 @@ function ConfirmationPageContent() {
                             <p>• Votre inscription sera validée dès que votre vidéo sera approuvée</p>
                         ) : (
                             <>
-                                <p>• Une équipe est considérée comme valide avec au moins {teamSize === 2 ? '1 joueur validé' : `${teamSize - 1} joueurs validés`}</p>
-                                <p>• Les équipes incomplètes ont 7 jours pour se compléter après création</p>
+                                <p>• Une équipe doit avoir au moins {teamSize === 2 ? '1 joueur validé' : `${teamSize - 1} joueurs validés`} pour participer</p>
+                                <p>• Les coéquipiers peuvent rejoindre à tout moment avant la fin des inscriptions</p>
+                                <p>• Assurez-vous que votre équipe soit complète et validée avant la fin des inscriptions</p>
                             </>
                         )}
                         <p>• En cas de problème, contactez-nous sur nos réseaux sociaux</p>
@@ -294,10 +295,10 @@ function ConfirmationPageContent() {
 
 import { Suspense } from 'react';
 
-export default function ConfirmationPage() {
+export default function ConfirmationMPPage() {
     return (
         <Suspense fallback={<div>Chargement...</div>}>
-            <ConfirmationPageContent />
+            <ConfirmationMPPageContent />
         </Suspense>
     );
 }

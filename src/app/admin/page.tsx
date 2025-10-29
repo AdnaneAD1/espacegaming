@@ -27,6 +27,7 @@ import { collection, query, onSnapshot, orderBy, doc, updateDoc, getDocs } from 
 import { db } from '@/lib/firebase'
 import { Team } from '@/types'
 import { Tournament } from '@/types/tournament-multi'
+import { GameModeUtils } from '@/types/game-modes'
 import { ComponentType } from 'react';
 import { useRouter } from 'next/navigation'
 import TournamentManagement from '@/components/admin/TournamentManagement'
@@ -214,16 +215,35 @@ export default function AdminDashboard() {
 
     const validatePlayer = async (teamId: string, playerId: string) => {
         try {
-            // Vérifier qu'un tournoi actif existe
-            if (!activeTournamentId) {
-                toast.error('Aucun tournoi actif disponible pour la validation')
+            // Trouver l'équipe pour obtenir son tournamentId
+            const team = teams.find(t => t.id === teamId)
+            if (!team) {
+                toast.error('Équipe introuvable')
                 return
             }
 
-            // Utiliser la référence du tournoi actif
-            const teamRef = doc(db, 'tournaments', activeTournamentId, 'teams', teamId)
-            const tournamentRef = doc(db, 'tournaments', activeTournamentId)
-            const team = teams.find(t => t.id === teamId)
+            // Utiliser le tournoi sélectionné
+            const teamTournamentId = selectedTournamentForTeams !== 'all' ? selectedTournamentForTeams : activeTournamentId
+            if (!teamTournamentId) {
+                toast.error('Aucun tournoi associé à cette équipe')
+                return
+            }
+
+            // Récupérer le tournoi pour obtenir le gameMode
+            const tournament = tournaments.find(t => t.id === teamTournamentId)
+            if (!tournament) {
+                toast.error('Tournoi introuvable')
+                return
+            }
+
+            // Calculer la taille d'équipe dynamiquement
+            const teamSize = GameModeUtils.getTeamSize(tournament.gameMode)
+            // Pour Solo (1): 1 validé suffit (le capitaine), Duo (2): 1 validé, Squad (4): 3 validés, 5v5 (5): 4 validés
+            const minValidatedPlayers = teamSize === 1 ? 1 : teamSize - 1
+
+            // Utiliser la référence du tournoi de l'équipe
+            const teamRef = doc(db, 'tournaments', teamTournamentId, 'teams', teamId)
+            const tournamentRef = doc(db, 'tournaments', teamTournamentId)
 
             if (team) {
                 const updatedPlayers = team.players.map(player =>
@@ -246,9 +266,10 @@ export default function AdminDashboard() {
                 let teamStatus: 'incomplete' | 'complete' | 'validated'
                 const wasTeamValidatedBefore = team.status === 'validated'
 
-                if (validatedCount >= 3) {
+                // Logique dynamique selon la taille d'équipe
+                if (validatedCount >= minValidatedPlayers) {
                     teamStatus = 'validated'
-                } else if (totalPlayers === 4) {
+                } else if (totalPlayers === teamSize) {
                     teamStatus = 'complete'
                 } else {
                     teamStatus = 'incomplete'
@@ -264,26 +285,21 @@ export default function AdminDashboard() {
 
                 // Si l'équipe vient d'être validée (nouveau statut 'validated' et n'était pas validée avant)
                 if (teamStatus === 'validated' && !wasTeamValidatedBefore) {
-                    // Mettre à jour les statistiques du tournoi actif
-                    const activeTournament = tournaments.find(t => t.id === activeTournamentId)
-                    if (activeTournament) {
-                        const updatedStats = {
-                            ...activeTournament.stats,
-                            totalTeams: activeTournament.stats.totalTeams + 1,
-                            totalGames: 3 // Fixer le nombre de parties à 3 comme demandé
-                        }
-
-                        await updateDoc(tournamentRef, {
-                            stats: updatedStats,
-                            updatedAt: new Date()
-                        })
-
-                        toast.success('Équipe validée avec succès ! Statistiques du tournoi mises à jour (3 parties)')
-                    } else {
-                        toast.success('Joueur validé avec succès dans le tournoi actif')
+                    // Mettre à jour les statistiques du tournoi
+                    const updatedStats = {
+                        ...tournament.stats,
+                        totalTeams: tournament.stats.totalTeams + 1,
+                        totalGames: 3 // Fixer le nombre de parties à 3 comme demandé
                     }
+
+                    await updateDoc(tournamentRef, {
+                        stats: updatedStats,
+                        updatedAt: new Date()
+                    })
+
+                    toast.success('Équipe validée avec succès ! Statistiques du tournoi mises à jour (3 parties)')
                 } else {
-                    toast.success('Joueur validé avec succès dans le tournoi actif')
+                    toast.success('Joueur validé avec succès')
                 }
             }
         } catch (error) {
@@ -294,15 +310,36 @@ export default function AdminDashboard() {
 
     const rejectPlayer = async (teamId: string, playerId: string) => {
         try {
-            // Vérifier qu'un tournoi actif existe
-            if (!activeTournamentId) {
-                toast.error('Aucun tournoi actif disponible pour le rejet')
+            // Trouver l'équipe pour obtenir son tournamentId
+            const team = teams.find(t => t.id === teamId)
+            if (!team) {
+                toast.error('Équipe introuvable')
                 return
             }
 
-            // Utiliser la référence du tournoi actif
-            const teamRef = doc(db, 'tournaments', activeTournamentId, 'teams', teamId)
-            const team = teams.find(t => t.id === teamId)
+            // Utiliser le tournoi sélectionné
+            const teamTournamentId = selectedTournamentForTeams !== 'all' ? selectedTournamentForTeams : activeTournamentId
+            if (!teamTournamentId) {
+                toast.error('Aucun tournoi associé à cette équipe')
+                return
+            }
+
+            // Récupérer le tournoi pour obtenir le gameMode
+            const tournament = tournaments.find(t => t.id === teamTournamentId)
+            if (!tournament) {
+                toast.error('Tournoi introuvable')
+                return
+            }
+
+            // Calculer la taille d'équipe dynamiquement
+            const teamSize = GameModeUtils.getTeamSize(tournament.gameMode)
+            // Pour Solo (1): 1 validé suffit (le capitaine), Duo (2): 1 validé, Squad (4): 3 validés, 5v5 (5): 4 validés
+            const minValidatedPlayers = teamSize === 1 ? 1 : teamSize - 1
+            // Pour Solo (1): 1 rejeté = équipe rejetée, Duo (2): 2 rejetés, Squad (4): 3 rejetés, 5v5 (5): 4 rejetés
+            const minRejectedForTeamRejection = Math.max(1, teamSize - 1)
+
+            // Utiliser la référence du tournoi de l'équipe
+            const teamRef = doc(db, 'tournaments', teamTournamentId, 'teams', teamId)
 
             if (team) {
                 const updatedPlayers = team.players.map(player =>
@@ -311,6 +348,13 @@ export default function AdminDashboard() {
                         : player
                 )
 
+                // Mettre à jour aussi le statut du capitaine si c'est lui
+                let updatedCaptain = team.captain;
+                const rejectedPlayer = updatedPlayers.find(p => p.id === playerId);
+                if (rejectedPlayer?.isCaptain) {
+                    updatedCaptain = { ...team.captain, status: 'rejected' as const };
+                }
+
                 // Recalculer le statut de l'équipe après rejet
                 const validatedCount = updatedPlayers.filter(p => p.status === 'validated').length;
                 const rejectedCount = updatedPlayers.filter(p => p.status === 'rejected').length;
@@ -318,11 +362,12 @@ export default function AdminDashboard() {
 
                 let teamStatus: 'incomplete' | 'complete' | 'validated' | 'rejected';
 
-                if (rejectedCount >= 3) {
+                // Logique dynamique selon la taille d'équipe
+                if (rejectedCount >= minRejectedForTeamRejection) {
                     teamStatus = 'rejected';
-                } else if (validatedCount >= 3) {
+                } else if (validatedCount >= minValidatedPlayers) {
                     teamStatus = 'validated';
-                } else if (totalPlayers === 4) {
+                } else if (totalPlayers === teamSize) {
                     teamStatus = 'complete';
                 } else {
                     teamStatus = 'incomplete';
@@ -330,14 +375,18 @@ export default function AdminDashboard() {
 
                 await updateDoc(teamRef, {
                     players: updatedPlayers,
+                    captain: updatedCaptain,
                     status: teamStatus,
                     updatedAt: new Date()
                 });
 
                 if (teamStatus === 'rejected') {
-                    toast.success('L\'équipe a été refusée (3 joueurs ou plus rejetés) dans le tournoi actif');
+                    const message = teamSize === 1 
+                        ? 'L\'équipe a été refusée (joueur rejeté)'
+                        : `L'équipe a été refusée (${minRejectedForTeamRejection} joueur${minRejectedForTeamRejection > 1 ? 's' : ''} ou plus rejetés)`;
+                    toast.success(message);
                 } else {
-                    toast.success('Joueur rejeté dans le tournoi actif');
+                    toast.success('Joueur rejeté avec succès');
                 }
             }
         } catch (error) {
@@ -839,25 +888,38 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-900">
-                                                        {team.players.length}/4 joueurs
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {team.players.filter(p => p.status === 'validated').length} validés
-                                                    </div>
+                                                    {(() => {
+                                                        const tournamentId = selectedTournamentForTeams !== 'all' ? selectedTournamentForTeams : activeTournamentId
+                                                        const tournament = tournaments.find(t => t.id === tournamentId)
+                                                        const teamSize = tournament ? GameModeUtils.getTeamSize(tournament.gameMode) : 4
+                                                        return (
+                                                            <>
+                                                                <div className="text-sm text-gray-900">
+                                                                    {team.players.length}/{teamSize} joueur{teamSize > 1 ? 's' : ''}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    {team.players.filter(p => p.status === 'validated').length} validé{team.players.filter(p => p.status === 'validated').length > 1 ? 's' : ''}
+                                                                </div>
+                                                            </>
+                                                        )
+                                                    })()}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${team.status === 'validated'
                                                         ? 'bg-green-100 text-green-800'
-                                                        : team.status === 'complete'
-                                                            ? 'bg-blue-100 text-blue-800'
-                                                            : 'bg-yellow-100 text-yellow-800'
+                                                        : team.status === 'rejected'
+                                                            ? 'bg-red-100 text-red-800'
+                                                            : team.status === 'complete'
+                                                                ? 'bg-blue-100 text-blue-800'
+                                                                : 'bg-yellow-100 text-yellow-800'
                                                         }`}>
                                                         {team.status === 'validated'
                                                             ? 'Validée'
-                                                            : team.status === 'complete'
-                                                                ? 'Complète'
-                                                                : 'Incomplète'}
+                                                            : team.status === 'rejected'
+                                                                ? 'Refusée'
+                                                                : team.status === 'complete'
+                                                                    ? 'Complète'
+                                                                    : 'Incomplète'}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -902,15 +964,19 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ml-3 whitespace-nowrap ${team.status === 'validated'
                                                     ? 'bg-green-100 text-green-800 border border-green-200'
-                                                    : team.status === 'complete'
-                                                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                                    : team.status === 'rejected'
+                                                        ? 'bg-red-100 text-red-800 border border-red-200'
+                                                        : team.status === 'complete'
+                                                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                                            : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                                                     }`}>
                                                     {team.status === 'validated'
                                                         ? '✓ Validée'
-                                                        : team.status === 'complete'
-                                                            ? '📝 Complète'
-                                                            : '⚠ Incomplète'}
+                                                        : team.status === 'rejected'
+                                                            ? '❌ Refusée'
+                                                            : team.status === 'complete'
+                                                                ? '📝 Complète'
+                                                                : '⚠ Incomplète'}
                                                 </span>
                                             </div>
                                             
@@ -929,13 +995,23 @@ export default function AdminDashboard() {
                                                         <Users className="h-4 w-4 text-purple-600 mr-2" />
                                                         <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Joueurs</p>
                                                     </div>
-                                                    <p className="text-sm font-medium text-gray-900">{team.players.length}/4 joueurs</p>
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        <span className="inline-flex items-center">
-                                                            <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
-                                                            {team.players.filter(p => p.status === 'validated').length} validés
-                                                        </span>
-                                                    </p>
+                                                    {(() => {
+                                                        const tournamentId = selectedTournamentForTeams !== 'all' ? selectedTournamentForTeams : activeTournamentId
+                                                        const tournament = tournaments.find(t => t.id === tournamentId)
+                                                        const teamSize = tournament ? GameModeUtils.getTeamSize(tournament.gameMode) : 4
+                                                        const validatedCount = team.players.filter(p => p.status === 'validated').length
+                                                        return (
+                                                            <>
+                                                                <p className="text-sm font-medium text-gray-900">{team.players.length}/{teamSize} joueur{teamSize > 1 ? 's' : ''}</p>
+                                                                <p className="text-xs text-gray-500 mt-1">
+                                                                    <span className="inline-flex items-center">
+                                                                        <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                                                        {validatedCount} validé{validatedCount > 1 ? 's' : ''}
+                                                                    </span>
+                                                                </p>
+                                                            </>
+                                                        )
+                                                    })()}
                                                 </div>
                                             </div>
                                             
@@ -1014,7 +1090,12 @@ export default function AdminDashboard() {
                                                 <p className="text-sm text-gray-600 mt-1">
                                                     <span className="inline-flex items-center">
                                                         <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                                                        Code: {team.code} • {team.players.length}/4 joueurs
+                                                        Code: {team.code} • {(() => {
+                                                            const tournamentId = selectedTournamentForTeams !== 'all' ? selectedTournamentForTeams : activeTournamentId
+                                                            const tournament = tournaments.find(t => t.id === tournamentId)
+                                                            const teamSize = tournament ? GameModeUtils.getTeamSize(tournament.gameMode) : 4
+                                                            return `${team.players.length}/${teamSize} joueur${teamSize > 1 ? 's' : ''}`
+                                                        })()}
                                                     </span>
                                                 </p>
                                             </div>
@@ -1054,10 +1135,12 @@ export default function AdminDashboard() {
                                                 
                                                 {/* Badge statut */}
                                                 <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${team.status === 'validated' ? 'bg-green-100 text-green-800 border border-green-200' :
+                                                    team.status === 'rejected' ? 'bg-red-100 text-red-800 border border-red-200' :
                                                     team.status === 'complete' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                                                         'bg-yellow-100 text-yellow-800 border border-yellow-200'
                                                     }`}>
                                                     {team.status === 'validated' ? '✓ Équipe validée' :
+                                                        team.status === 'rejected' ? '❌ Équipe refusée' :
                                                         team.status === 'complete' ? '📝 Équipe complète' : '⚠ Équipe incomplète'}
                                                 </span>
                                             </div>
@@ -1290,7 +1373,7 @@ export default function AdminDashboard() {
                                                                     <p className="text-gray-600">WhatsApp:</p>
                                                                     <p className="font-mono text-sm text-gray-900">{player.whatsapp}</p>
                                                                 </div>
-                                                            </div>
+                                                            </div>                                                            
                                                             <div className="flex items-center justify-between">
                                                                 <div>
                                                                     {player.deviceCheckVideo ? (
@@ -1444,10 +1527,12 @@ export default function AdminDashboard() {
                                         <p><span className="font-medium text-gray-900">Code:</span> {selectedTeam.code}</p>
                                         <p><span className="font-medium text-gray-900">Statut:</span>
                                             <span className={`ml-2 px-2 py-1 text-xs rounded-full ${selectedTeam.status === 'validated' ? 'bg-green-100 text-green-800' :
+                                                selectedTeam.status === 'rejected' ? 'bg-red-100 text-red-800' :
                                                 selectedTeam.status === 'complete' ? 'bg-blue-100 text-blue-800' :
                                                     'bg-yellow-100 text-yellow-800'
                                                 }`}>
                                                 {selectedTeam.status === 'validated' ? 'Validée' :
+                                                    selectedTeam.status === 'rejected' ? 'Refusée' :
                                                     selectedTeam.status === 'complete' ? 'Complète' : 'Incomplète'}
                                             </span>
                                         </p>
@@ -1474,7 +1559,13 @@ export default function AdminDashboard() {
                             </div>
 
                             <div>
-                                <h4 className="font-semibold text-gray-900 mb-4">Joueurs ({selectedTeam.players.length}/4)</h4>
+                                <h4 className="font-semibold text-gray-900 mb-4">
+                                    Joueurs ({selectedTeam.players.length}/{(() => {
+                                        const tournamentId = selectedTournamentForTeams !== 'all' ? selectedTournamentForTeams : activeTournamentId
+                                        const tournament = tournaments.find(t => t.id === tournamentId)
+                                        return tournament ? GameModeUtils.getTeamSize(tournament.gameMode) : 4
+                                    })()})
+                                </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {selectedTeam.players.map((player, index) => (
                                         <div key={player.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">

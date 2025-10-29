@@ -5,7 +5,8 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Tournament } from '@/types/tournament-multi';
 import { TournamentService } from '@/services/tournamentService';
-import { Trophy, Plus, Calendar, Users, Target, Settings, Play, Trash2, CheckCircle, Loader2 } from 'lucide-react';
+import { GameMode, GameModeUtils, GAME_MODES_CONFIG } from '@/types/game-modes';
+import { Trophy, Plus, Calendar, Users, Target, Settings, Play, Trash2, CheckCircle, Loader2, Gamepad2 } from 'lucide-react';
 
 interface TournamentManagementProps {
   onManageTournament?: (tournamentId: string) => void
@@ -15,16 +16,29 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [activatingId, setActivatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newTournament, setNewTournament] = useState({
     name: '',
     description: '',
+    gameMode: GameMode.BR_SQUAD,
     startDate: '',
     endDate: '',
     deadline_register: '',
-    date_result: ''
+    date_result: '',
+    maxTeams: 50,
+    // Configuration personnalisée
+    customFormat: {
+      bestOf: undefined as 3 | 5 | undefined,
+      tournamentFormat: 'elimination_direct' as 'elimination_direct' | 'groups_then_elimination' | 'groups_only',
+      groupStage: {
+        enabled: false,
+        teamsPerGroup: 4,
+        qualifiersPerGroup: 2 as 1 | 2,
+        roundRobinInGroup: true
+      }
+    }
   });
 
   // Obtenir la date/heure actuelle au format datetime-local
@@ -73,16 +87,53 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
       const deadline_register = newTournament.deadline_register ? new Date(newTournament.deadline_register) : undefined;
       const date_result = newTournament.date_result ? new Date(newTournament.date_result) : undefined;
       
+      // Préparer customFormat en nettoyant les valeurs undefined
+      const customFormat = GameModeUtils.isMultiplayerMode(newTournament.gameMode)
+        ? {
+            ...(newTournament.customFormat.bestOf && { bestOf: newTournament.customFormat.bestOf }),
+            tournamentFormat: newTournament.customFormat.tournamentFormat,
+            groupStage: newTournament.customFormat.groupStage
+          }
+        : undefined;
+
       const tournamentId = await TournamentService.createTournament(
         newTournament.name,
         newTournament.description,
-        { startDate, endDate, deadline_register, date_result }
+        newTournament.gameMode,
+        { 
+          startDate, 
+          endDate, 
+          deadline_register, 
+          date_result,
+          maxTeams: newTournament.maxTeams,
+          // Configuration personnalisée uniquement pour les modes multijoueur
+          ...(customFormat && { customFormat })
+        }
       );
       
       console.log('Nouveau tournoi créé:', tournamentId);
       
       // Réinitialiser le formulaire
-      setNewTournament({ name: '', description: '', startDate: '', endDate: '', deadline_register: '', date_result: '' });
+      setNewTournament({ 
+        name: '', 
+        description: '', 
+        gameMode: GameMode.BR_SQUAD, 
+        startDate: '', 
+        endDate: '', 
+        deadline_register: '', 
+        date_result: '',
+        maxTeams: 50,
+        customFormat: {
+          bestOf: undefined,
+          tournamentFormat: 'elimination_direct',
+          groupStage: {
+            enabled: false,
+            teamsPerGroup: 4,
+            qualifiersPerGroup: 2,
+            roundRobinInGroup: true
+          }
+        }
+      });
       setShowCreateForm(false);
       
       // Recharger la liste
@@ -264,6 +315,257 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
               </div>
             </div>
             
+            {/* Mode de jeu */}
+            <div className="bg-white rounded-lg p-6 border border-gray-100 shadow-sm">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Gamepad2 className="w-5 h-5 text-purple-500" />
+                Mode de jeu
+              </h4>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Sélectionnez le mode de jeu *
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.values(GameMode).map((mode) => {
+                      const config = GAME_MODES_CONFIG[mode];
+                      const isSelected = newTournament.gameMode === mode;
+                      
+                      return (
+                        <div
+                          key={mode}
+                          onClick={() => setNewTournament(prev => ({ ...prev, gameMode: mode }))}
+                          className={`cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 ${
+                            isSelected 
+                              ? 'border-purple-500 bg-purple-50 shadow-md' 
+                              : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-25'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className={`font-semibold ${isSelected ? 'text-purple-700' : 'text-gray-800'}`}>
+                              {config.displayName}
+                            </h5>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              config.category === 'battle_royale' 
+                                ? 'bg-orange-100 text-orange-700' 
+                                : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {config.category === 'battle_royale' ? 'BR' : 'MJ'}
+                            </span>
+                          </div>
+                          <p className={`text-sm ${isSelected ? 'text-purple-600' : 'text-gray-600'} mb-2`}>
+                            {config.description}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span>👥 {config.teamSize} joueur{config.teamSize > 1 ? 's' : ''}</span>
+                            {GameModeUtils.isBestOfMode(mode) && (
+                              <span>🎯 BO{GameModeUtils.getBestOf(mode)}</span>
+                            )}
+                            {GameModeUtils.hasGroupStage(mode) && (
+                              <span>📊 Groupes</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* Informations sur le mode sélectionné */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h6 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-gray-600" />
+                    Configuration du mode {GAME_MODES_CONFIG[newTournament.gameMode].displayName}
+                  </h6>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div>
+                      <strong>Taille d&apos;équipe:</strong> {GAME_MODES_CONFIG[newTournament.gameMode].teamSize} joueur(s)
+                    </div>
+                    <div>
+                      <strong>Format:</strong> {
+                        GAME_MODES_CONFIG[newTournament.gameMode].settings.tournamentFormat === 'groups_then_elimination' 
+                          ? 'Groupes puis élimination'
+                          : GAME_MODES_CONFIG[newTournament.gameMode].settings.tournamentFormat === 'round_robin'
+                          ? 'Round Robin'
+                          : 'Élimination directe'
+                      }
+                    </div>
+                    {GameModeUtils.isBestOfMode(newTournament.gameMode) && (
+                      <div>
+                        <strong>Matches:</strong> Best of {GameModeUtils.getBestOf(newTournament.gameMode)}
+                      </div>
+                    )}
+                    {GameModeUtils.hasGroupStage(newTournament.gameMode) && (
+                      <div>
+                        <strong>Qualifiés par groupe:</strong> {GameModeUtils.getQualifiersPerGroup(newTournament.gameMode)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Configuration personnalisée - Uniquement pour les modes multijoueur */}
+            {GameModeUtils.isMultiplayerMode(newTournament.gameMode) && (
+              <div className="bg-white rounded-lg p-6 border border-gray-100 shadow-sm">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-orange-500" />
+                  Configuration personnalisée
+                </h4>
+              
+              <div className="space-y-6">
+                {/* Format du tournoi */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Format du tournoi *
+                  </label>
+                  <div className="space-y-3">
+                    {GameModeUtils.getAvailableFormats(newTournament.gameMode).map((format) => (
+                      <label key={format.value} className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="tournamentFormat"
+                          value={format.value}
+                          checked={newTournament.customFormat.tournamentFormat === format.value}
+                          onChange={(e) => setNewTournament(prev => ({
+                            ...prev,
+                            customFormat: {
+                              ...prev.customFormat,
+                              tournamentFormat: e.target.value as 'elimination_direct' | 'groups_then_elimination' | 'groups_only',
+                              groupStage: {
+                                ...prev.customFormat.groupStage,
+                                enabled: e.target.value !== 'elimination_direct'
+                              }
+                            }
+                          }))}
+                          className="mt-1 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div>
+                          <div className="font-medium text-gray-900">{format.label}</div>
+                          <div className="text-sm text-gray-600">{format.description}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Configuration Best Of pour les modes multijoueur */}
+                {GameModeUtils.isMultiplayerMode(newTournament.gameMode) && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      Format des matches
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {GameModeUtils.getAvailableBestOf(newTournament.gameMode).map((option) => (
+                        <label key={option.value} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="bestOf"
+                            value={option.value}
+                            checked={newTournament.customFormat.bestOf === option.value}
+                            onChange={(e) => setNewTournament(prev => ({
+                              ...prev,
+                              customFormat: {
+                                ...prev.customFormat,
+                                bestOf: parseInt(e.target.value) as 3 | 5
+                              }
+                            }))}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="font-medium text-gray-900">{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Configuration des phases de groupes */}
+                {newTournament.customFormat.tournamentFormat !== 'elimination_direct' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h5 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Configuration des phases de groupes
+                    </h5>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-blue-800 mb-2">
+                          Équipes par groupe
+                        </label>
+                        <select
+                          value={newTournament.customFormat.groupStage.teamsPerGroup}
+                          onChange={(e) => setNewTournament(prev => ({
+                            ...prev,
+                            customFormat: {
+                              ...prev.customFormat,
+                              groupStage: {
+                                ...prev.customFormat.groupStage,
+                                teamsPerGroup: parseInt(e.target.value)
+                              }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                          <option value={3}>3 équipes par groupe</option>
+                          <option value={4}>4 équipes par groupe</option>
+                          <option value={5}>5 équipes par groupe</option>
+                          <option value={6}>6 équipes par groupe</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-blue-800 mb-2">
+                          Qualifiés par groupe
+                        </label>
+                        <select
+                          value={newTournament.customFormat.groupStage.qualifiersPerGroup}
+                          onChange={(e) => setNewTournament(prev => ({
+                            ...prev,
+                            customFormat: {
+                              ...prev.customFormat,
+                              groupStage: {
+                                ...prev.customFormat.groupStage,
+                                qualifiersPerGroup: parseInt(e.target.value) as 1 | 2
+                              }
+                            }
+                          }))}
+                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                          <option value={1}>1 qualifié par groupe</option>
+                          <option value={2}>2 qualifiés par groupe</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={newTournament.customFormat.groupStage.roundRobinInGroup}
+                          onChange={(e) => setNewTournament(prev => ({
+                            ...prev,
+                            customFormat: {
+                              ...prev.customFormat,
+                              groupStage: {
+                                ...prev.customFormat.groupStage,
+                                roundRobinInGroup: e.target.checked
+                              }
+                            }
+                          }))}
+                          className="text-blue-600 focus:ring-blue-500 rounded"
+                        />
+                        <span className="text-sm text-blue-800">
+                          Round Robin dans les groupes (chaque équipe joue contre toutes les autres)
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            )}
+            
             {/* Dates et horaires */}
             <div className="bg-white rounded-lg p-6 border border-gray-100 shadow-sm">
               <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -341,6 +643,37 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Le lien vers le classement final apparaîtra sur la page d&apos;accueil à partir de cette date
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Nombre maximum d&apos;équipes *
+                  </label>
+                  <input
+                    type="number"
+                    value={newTournament.maxTeams}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setNewTournament(prev => ({ ...prev, maxTeams: 0 }));
+                      } else {
+                        const num = parseInt(value);
+                        if (!isNaN(num) && num >= 1 && num <= 100) {
+                          setNewTournament(prev => ({ ...prev, maxTeams: num }));
+                        }
+                      }
+                    }}
+                    min={1}
+                    max={100}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 transition-all duration-200"
+                    required
+                  />
+                  <p className="text-sm text-gray-600 mt-2 flex items-start gap-2">
+                    <svg className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Limite le nombre d&apos;équipes pouvant s&apos;inscrire à ce tournoi (entre 1 et 100)
                   </p>
                 </div>
               </div>
@@ -430,6 +763,11 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         <span>Créé le {formatDate(tournament.createdAt)}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1">
+                        <Gamepad2 className="w-4 h-4" />
+                        <span>{tournament.gameMode ? GAME_MODES_CONFIG[tournament.gameMode]?.displayName : 'BR Squad'}</span>
                       </div>
                       
                       <div className="flex items-center gap-1">
@@ -526,12 +864,21 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
                     )}
                     
                     {/* Statistiques - Version mobile compacte */}
-                    <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="bg-white rounded-lg p-2 text-center">
+                        <Gamepad2 className="w-4 h-4 text-purple-500 mx-auto mb-1" />
+                        <p className="text-xs text-gray-700 font-medium truncate">
+                          {tournament.gameMode ? GAME_MODES_CONFIG[tournament.gameMode]?.displayName : 'BR Squad'}
+                        </p>
+                      </div>
+                      
                       <div className="bg-white rounded-lg p-2 text-center">
                         <Calendar className="w-4 h-4 text-gray-400 mx-auto mb-1" />
                         <p className="text-xs text-gray-500 truncate">{formatDate(tournament.createdAt)}</p>
                       </div>
-                      
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="bg-white rounded-lg p-2 text-center">
                         <Users className="w-4 h-4 text-blue-500 mx-auto mb-1" />
                         <p className="text-xs text-gray-700 font-medium">{tournament.stats?.totalTeams || 0}</p>

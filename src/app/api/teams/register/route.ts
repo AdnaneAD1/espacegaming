@@ -1,44 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { teamRegistrationSchema } from '@/lib/validations';
+import { getTeamRegistrationSchema } from '@/lib/validations';
 import { generateTeamCode } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { Tournament } from '@/types/tournament-multi';
-
-// Fonction pour récupérer le tournoi actif
-async function getActiveTournament(): Promise<Tournament | null> {
-    const tournamentsSnapshot = await adminDb
-        .collection('tournaments')
-        .where('status', '==', 'active')
-        .limit(1)
-        .get();
-    
-    if (tournamentsSnapshot.empty) {
-        return null;
-    }
-    
-    const tournamentDoc = tournamentsSnapshot.docs[0];
-    return {
-        id: tournamentDoc.id,
-        ...tournamentDoc.data()
-    } as Tournament;
-}
+import { GameMode, GameModeUtils } from '@/types/game-modes';
+import { TournamentService } from '@/services/tournamentService';
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
 
-        // Validation des données
-        const validatedData = teamRegistrationSchema.parse(body);
+        // Déterminer le type de tournoi (BR par défaut pour compatibilité)
+        const tournamentType: 'br' | 'mp' = body.tournamentType || 'br';
 
-        // Vérifier qu'un tournoi actif existe
-        const activeTournament = await getActiveTournament();
+        // Charger le tournoi actif selon le type
+        const activeTournament = tournamentType === 'br'
+            ? await TournamentService.getActiveBRTournament()
+            : await TournamentService.getActiveMPTournament();
         if (!activeTournament) {
             return NextResponse.json(
                 { error: 'Aucun tournoi actif disponible pour l\'inscription' },
                 { status: 400 }
             );
         }
+
+        // Obtenir la taille d'équipe du tournoi actif
+        const teamSize = GameModeUtils.getTeamSize(activeTournament.gameMode);
+
+        // Validation des données avec le schéma dynamique
+        const validatedData = getTeamRegistrationSchema(teamSize).parse(body);
 
         // Vérifier si les inscriptions sont encore ouvertes
         if (activeTournament.deadline_register) {
@@ -85,6 +75,25 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Vérifier la compatibilité avec le mode de jeu du tournoi
+        const tournamentGameMode = activeTournament.gameMode || GameMode.BR_SQUAD; // Fallback pour les anciens tournois
+        const requiredTeamSize = GameModeUtils.getTeamSize(tournamentGameMode);
+        
+        // Valider la taille de l'équipe selon le mode de jeu
+        const totalPlayers = 1 + (validatedData.players || []).length; // Capitaine + joueurs
+        
+        // Vérifier que l'équipe ne dépasse pas la taille maximale
+        if (totalPlayers > requiredTeamSize) {
+            return NextResponse.json(
+                { 
+                    error: `Ce tournoi ${GameModeUtils.getDisplayName(tournamentGameMode)} accepte maximum ${requiredTeamSize} joueur(s). Vous avez fourni ${totalPlayers} joueur(s).` 
+                },
+                { status: 400 }
+            );
+        }
+        
+        // Note: Les équipes peuvent être incomplètes à l'inscription, d'autres joueurs peuvent rejoindre via /api/teams/join
+
         // Vérifier le nombre d'équipes existantes dans le tournoi actif
         const filteredTeams = [];
         teamsSnapshot.forEach(doc => {
@@ -97,7 +106,7 @@ export async function POST(request: NextRequest) {
                 filteredTeams.push(team);
             }
         });
-        const maxTeams = parseInt(process.env.NEXT_PUBLIC_MAX_TEAMS || '50');
+        const maxTeams = activeTournament.settings?.maxTeams || parseInt(process.env.NEXT_PUBLIC_MAX_TEAMS || '50');
 
         if (filteredTeams.length >= maxTeams) {
             return NextResponse.json(
@@ -117,19 +126,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Vérifier l'unicité du nom d'équipe dans le tournoi actif
-        const existingTeamSnapshot = await adminDb
-            .collection('tournaments')
-            .doc(activeTournament.id)
-            .collection('teams')
-            .where('name', '==', validatedData.teamName)
-            .get();
+        // Vérifier l'unicité du nom d'équipe dans le tournoi actif (sauf en Solo)
+        // En Solo, le nom d'équipe = pseudo du joueur, déjà vérifié pour unicité ci-dessus
+        if (requiredTeamSize > 1 && validatedData.teamName) {
+            const existingTeamSnapshot = await adminDb
+                .collection('tournaments')
+                .doc(activeTournament.id)
+                .collection('teams')
+                .where('name', '==', validatedData.teamName)
+                .get();
 
-        if (!existingTeamSnapshot.empty) {
-            return NextResponse.json(
-                { error: 'Ce nom d\'équipe est déjà pris dans ce tournoi' },
-                { status: 400 }
-            );
+            if (!existingTeamSnapshot.empty) {
+                return NextResponse.json(
+                    { error: 'Ce nom d\'équipe est déjà pris dans ce tournoi' },
+                    { status: 400 }
+                );
+            }
         }
 
         // Générer un code d'équipe unique dans le tournoi actif
@@ -184,14 +196,25 @@ export async function POST(request: NextRequest) {
             isCaptain: false,
         }));
 
+        // Déterminer le statut selon le mode de jeu
+        const totalPlayersInTeam = 1 + players.length; // Capitaine + joueurs additionnels
+        const isTeamComplete = totalPlayersInTeam === requiredTeamSize;
+        
+        // En mode Solo, utiliser le pseudo du joueur comme nom d'équipe
+        const teamName = requiredTeamSize === 1 
+            ? validatedData.captain.pseudo 
+            : validatedData.teamName;
+        
         // Toutes les données de l'équipe
         const teamData = {
             id: teamId,
-            name: validatedData.teamName,
+            tournamentId: activeTournament.id,
+            gameMode: tournamentGameMode,
+            name: teamName,
             code: teamCode!,
             captain,
             players: [captain, ...players],
-            status: players.length === 3 ? 'complete' : 'incomplete', // 4 joueurs au total (capitaine + 3)
+            status: isTeamComplete ? 'complete' : 'incomplete',
             createdAt: now,
             updatedAt: now,
         };

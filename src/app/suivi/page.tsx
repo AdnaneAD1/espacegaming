@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { formatRelativeTime } from '@/lib/utils';
+import { GameMode, GameModeUtils } from '@/types/game-modes';
 
 interface Player {
     id: string;
@@ -33,6 +34,7 @@ interface Team {
     createdAt: string;
     updatedAt: string;
     validatedAt?: string;
+    gameMode?: GameMode; // Mode de jeu du tournoi
 }
 
 function SuiviPageContent() {
@@ -43,6 +45,8 @@ function SuiviPageContent() {
     const [team, setTeam] = useState<Team | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [teamSize, setTeamSize] = useState<number>(4); // Taille d'équipe par défaut
+    const [tournamentType, setTournamentType] = useState<'br' | 'mp'>('br'); // Type de tournoi
     
 
     useEffect(() => {
@@ -66,6 +70,20 @@ function SuiviPageContent() {
             if (response.ok) {
                 const teamData = await response.json();
                 setTeam(teamData);
+                
+                // Déterminer la taille d'équipe et le type de tournoi depuis le gameMode
+                if (teamData.gameMode) {
+                    const size = GameModeUtils.getTeamSize(teamData.gameMode);
+                    setTeamSize(size);
+                    
+                    // Déterminer le type de tournoi (BR ou MP)
+                    const isBR = teamData.gameMode.includes('br_');
+                    setTournamentType(isBR ? 'br' : 'mp');
+                } else {
+                    // Fallback : déduire depuis le nombre de joueurs
+                    setTeamSize(4); // Par défaut Squad
+                    setTournamentType('br'); // Par défaut BR
+                }
             } else {
                 const errorData = await response.json();
                 setError(errorData.error || 'Équipe introuvable');
@@ -96,29 +114,36 @@ function SuiviPageContent() {
     };
 
     const shareTeam = async () => {
-        if (team?.code && navigator.share) {
-            try {
-                await navigator.share({
-                    title: `Rejoindre l'équipe ${team.name} - Tournoi COD Mobile`,
-                    text: `Rejoignez l'équipe "${team.name}" avec le code: ${team.code}`,
-                    url: `${window.location.origin}/rejoindre?code=${team.code}`,
-                });
-            } catch {
-                const shareUrl = `${window.location.origin}/rejoindre?code=${team.code}`;
+        if (team?.code) {
+            // Déterminer le bon lien selon le type de tournoi
+            const rejoindreUrl = tournamentType === 'mp' ? '/rejoindre-mp' : '/rejoindre';
+            const tournamentName = tournamentType === 'mp' ? 'Multijoueur' : 'Battle Royale';
+            const shareUrl = `${window.location.origin}${rejoindreUrl}?code=${team.code}`;
+            
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: `Rejoindre l'équipe ${team.name} - Tournoi COD Mobile ${tournamentName}`,
+                        text: `Rejoignez l'équipe "${team.name}" avec le code: ${team.code}`,
+                        url: shareUrl,
+                    });
+                } catch {
+                    // Fallback: copier le lien
+                    try {
+                        await navigator.clipboard.writeText(shareUrl);
+                        toast.success('Lien de partage copié !');
+                    } catch {
+                        toast.error('Erreur lors du partage');
+                    }
+                }
+            } else {
+                // Fallback pour navigateurs qui ne supportent pas Web Share API
                 try {
                     await navigator.clipboard.writeText(shareUrl);
                     toast.success('Lien de partage copié !');
                 } catch {
                     toast.error('Erreur lors du partage');
                 }
-            }
-        } else if (team?.code) {
-            const shareUrl = `${window.location.origin}/rejoindre?code=${team.code}`;
-            try {
-                await navigator.clipboard.writeText(shareUrl);
-                toast.success('Lien de partage copié !');
-            } catch {
-                toast.error('Erreur lors du partage');
             }
         }
     };
@@ -273,7 +298,7 @@ function SuiviPageContent() {
                             <h3 className="text-xl font-bold text-white mb-6">Statistiques de l&apos;équipe</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-400">{team.players.length}/4</div>
+                                    <div className="text-2xl font-bold text-blue-400">{team.players.length}/{teamSize}</div>
                                     <div className="text-gray-400 text-sm">Joueurs</div>
                                 </div>
                                 <div className="text-center">
@@ -361,7 +386,7 @@ function SuiviPageContent() {
                                 ))}
 
                                 {/* Slots vides */}
-                                {Array.from({ length: 4 - team.players.length }).map((_, index) => (
+                                {Array.from({ length: teamSize - team.players.length }).map((_, index) => (
                                     <div
                                         key={`empty-${index}`}
                                         className="bg-gray-700/30 rounded-lg p-6 border border-gray-600 border-dashed"
@@ -382,7 +407,7 @@ function SuiviPageContent() {
                         <div className="bg-blue-500/10 backdrop-blur-lg rounded-2xl p-6 border border-blue-500/30">
                             <h3 className="text-lg font-semibold text-blue-400 mb-3">📋 Informations importantes</h3>
                             <div className="space-y-2 text-gray-300 text-sm">
-                                <p>• Une équipe est considérée comme valide avec au moins 3 joueurs validés</p>
+                                <p>• Une équipe est considérée comme valide avec {teamSize === 1 ? 'le joueur validé' : `au moins ${teamSize - 1} joueur${teamSize > 2 ? 's' : ''} validé${teamSize > 2 ? 's' : ''}`}</p>
                                 <p>• La validation des vidéos peut prendre jusqu&apos;à 48 heures</p>
                                 <p>• En cas de refus, vous pouvez contacter les administrateurs pour plus d&apos;informations</p>
                             </div>

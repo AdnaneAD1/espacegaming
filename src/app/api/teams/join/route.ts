@@ -2,26 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { joinTeamSchema } from '@/lib/validations';
 import { v4 as uuidv4 } from 'uuid';
-import { Tournament } from '@/types/tournament-multi';
-
-// Fonction pour récupérer le tournoi actif
-async function getActiveTournament(): Promise<Tournament | null> {
-    const tournamentsSnapshot = await adminDb
-        .collection('tournaments')
-        .where('status', '==', 'active')
-        .limit(1)
-        .get();
-    
-    if (tournamentsSnapshot.empty) {
-        return null;
-    }
-    
-    const tournamentDoc = tournamentsSnapshot.docs[0];
-    return {
-        id: tournamentDoc.id,
-        ...tournamentDoc.data()
-    } as Tournament;
-}
+import { GameMode, GameModeUtils } from '@/types/game-modes';
+import { TournamentService } from '@/services/tournamentService';
 
 export async function POST(request: NextRequest) {
     try {
@@ -30,8 +12,13 @@ export async function POST(request: NextRequest) {
         // Validation des données
         const validatedData = joinTeamSchema.parse(body);
 
-        // Vérifier qu'un tournoi actif existe
-        const activeTournament = await getActiveTournament();
+        // Déterminer le type de tournoi (BR par défaut pour compatibilité)
+        const tournamentType: 'br' | 'mp' = body.tournamentType || 'br';
+
+        // Charger le tournoi actif selon le type
+        const activeTournament = tournamentType === 'br'
+            ? await TournamentService.getActiveBRTournament()
+            : await TournamentService.getActiveMPTournament();
         if (!activeTournament) {
             return NextResponse.json(
                 { error: 'Aucun tournoi actif disponible pour rejoindre une équipe' },
@@ -70,10 +57,16 @@ export async function POST(request: NextRequest) {
         const teamDoc = teamSnapshot.docs[0];
         const teamData = teamDoc.data();
 
+        // Vérifier la taille d'équipe requise selon le mode de jeu
+        const tournamentGameMode = activeTournament.gameMode || GameMode.BR_SQUAD;
+        const requiredTeamSize = GameModeUtils.getTeamSize(tournamentGameMode);
+        // Le capitaine est déjà inclus dans players (premier élément), donc pas besoin d'ajouter +1
+        const currentTeamSize = teamData.players?.length || 0;
+
         // Vérifier si l'équipe est complète
-        if (teamData.players && teamData.players.length >= 4) {
+        if (currentTeamSize >= requiredTeamSize) {
             return NextResponse.json(
-                { error: 'Cette équipe est déjà complète (4/4 joueurs)' },
+                { error: `Cette équipe est déjà complète (${currentTeamSize}/${requiredTeamSize} joueurs)` },
                 { status: 400 }
             );
         }

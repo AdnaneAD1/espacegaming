@@ -54,8 +54,8 @@ function RejoindreEquipePageContent() {
     const [otherPlayerCountryValue, setOtherPlayerCountryValue] = useState('');
     const [teamInfo, setTeamInfo] = useState<Team | null>(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [brTournament, setBrTournament] = useState<Tournament | null>(null);
-    const [teamSize, setTeamSize] = useState<number>(4);
+    const [mpTournament, setMpTournament] = useState<Tournament | null>(null);
+    const [teamSize, setTeamSize] = useState<number>(5);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     interface UploadState {
         isUploading?: boolean;
@@ -86,15 +86,15 @@ function RejoindreEquipePageContent() {
 
     const teamCode = watch('teamCode');
 
-    // Charger le tournoi BR au chargement
+    // Charger le tournoi MP au chargement
     useEffect(() => {
         const loadTournament = async () => {
             try {
-                const brTournamentData = await TournamentService.getActiveBRTournament();
-                setBrTournament(brTournamentData);
+                const mpTournamentData = await TournamentService.getActiveMPTournament();
+                setMpTournament(mpTournamentData);
                 
-                if (brTournamentData) {
-                    const size = GameModeUtils.getTeamSize(brTournamentData.gameMode);
+                if (mpTournamentData) {
+                    const size = GameModeUtils.getTeamSize(mpTournamentData.gameMode);
                     setTeamSize(size);
                 }
             } catch (error) {
@@ -194,7 +194,7 @@ function RejoindreEquipePageContent() {
                 body: JSON.stringify({
                     ...data,
                     teamId: teamInfo.id,
-                    tournamentType: 'br', // Mode Battle Royale uniquement
+                    tournamentType: 'mp', // Mode Multijoueur uniquement
                 }),
             });
             console.log('Response:', response);
@@ -224,8 +224,8 @@ function RejoindreEquipePageContent() {
         );
     }
 
-    // Si aucun tournoi BR actif
-    if (!brTournament) {
+    // Si aucun tournoi MP actif
+    if (!mpTournament) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
                 <Navbar />
@@ -237,10 +237,10 @@ function RejoindreEquipePageContent() {
                             </div>
                         </div>
                         <h1 className="text-3xl font-bold text-white mb-4">
-                            Aucun tournoi Battle Royale actif
+                            Aucun tournoi Multijoueur actif
                         </h1>
                         <p className="text-xl text-gray-300 mb-8">
-                            Il n&apos;y a actuellement aucun tournoi Battle Royale ouvert aux inscriptions.
+                            Il n&apos;y a actuellement aucun tournoi Multijoueur ouvert aux inscriptions.
                         </p>
                         <Link
                             href="/"
@@ -255,7 +255,7 @@ function RejoindreEquipePageContent() {
         );
     }
 
-    // Si mode Solo, afficher un message
+    // Si mode Solo (1v1), afficher un message
     if (teamSize === 1) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
@@ -268,17 +268,17 @@ function RejoindreEquipePageContent() {
                             </div>
                         </div>
                         <h1 className="text-3xl font-bold text-white mb-4">
-                            Mode Solo Actif
+                            Mode Solo 1v1 Actif
                         </h1>
                         <p className="text-xl text-gray-300 mb-8">
-                            Le tournoi actuel est en mode <strong>Battle Royale Solo</strong>.
+                            Le tournoi actuel est en mode <strong>Multijoueur 1v1</strong>.
                             <br />
                             Il n&apos;est pas possible de rejoindre une équipe en mode solo.
                         </p>
                         <div className="flex gap-4 justify-center">
                             <Link
-                                href="/inscription"
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                                href="/inscription/mp"
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                             >
                                 S&apos;inscrire en Solo
                             </Link>
@@ -309,10 +309,10 @@ function RejoindreEquipePageContent() {
                         </div>
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-                        Rejoindre une équipe Battle Royale
+                        Rejoindre une équipe Multijoueur
                     </h1>
                     <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-                        Entrez le code d&apos;équipe pour rejoindre une équipe de tournoi Battle Royale
+                        Entrez le code d&apos;équipe pour rejoindre une équipe de tournoi Multijoueur
                     </p>
                 </div>
 
@@ -396,7 +396,7 @@ function RejoindreEquipePageContent() {
                     </section>
 
                     {/* Informations du joueur */}
-                    {teamInfo && teamInfo.players.length < 4 && (
+                    {teamInfo && teamInfo.players.length < teamSize && (
                         <section className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
                             <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
                                 <UserPlus className="w-6 h-6 mr-3 text-green-400" />
@@ -575,11 +575,11 @@ function RejoindreEquipePageContent() {
                             Si vous n&apos;avez pas encore d&apos;équipe, vous pouvez créer la vôtre et inviter vos amis !
                         </p>
                         <Link
-                            href="/inscription"
+                            href="/inscription/mp"
                             className="inline-flex items-center bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all duration-200 text-sm"
                         >
                             <Users className="w-4 h-4 mr-2" />
-                            Créer une équipe
+                            Créer une équipe Multijoueur
                         </Link>
                     </div>
                 </div>

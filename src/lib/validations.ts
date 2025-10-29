@@ -40,18 +40,28 @@ export const playerSchema = z.object({
         .min(1, 'La vidéo de device check est obligatoire'),
 });
 
-// Schéma pour l'inscription d'une équipe
-export const teamRegistrationSchema = z.object({
-    teamName: z
-        .string()
-        .min(3, 'Le nom d\'équipe doit contenir au moins 3 caractères')
-        .max(30, 'Le nom d\'équipe ne peut pas dépasser 30 caractères')
-        .regex(/^[a-zA-Z0-9\s_-]+$/, 'Le nom d\'équipe contient des caractères non autorisés'),
-    captain: playerSchema,
-    players: z
-        .array(playerSchema)
-        .max(3, 'Une équipe ne peut avoir que 3 joueurs supplémentaires maximum'),
-});
+// Fonction pour créer un schéma d'inscription dynamique selon la taille d'équipe
+export const getTeamRegistrationSchema = (teamSize: number) => {
+    // Pour le mode Solo (teamSize = 1), le nom d'équipe est optionnel
+    const teamNameSchema = teamSize === 1
+        ? z.string().optional()
+        : z.string()
+            .min(3, 'Le nom d\'équipe doit contenir au moins 3 caractères')
+            .max(30, 'Le nom d\'équipe ne peut pas dépasser 30 caractères')
+            .regex(/^[a-zA-Z0-9\s_-]+$/, 'Le nom d\'équipe contient des caractères non autorisés');
+
+    return z.object({
+        teamName: teamNameSchema,
+        captain: playerSchema,
+        players: z
+            .array(playerSchema)
+            .min(0, `Vous pouvez créer une équipe sans coéquipiers et les ajouter plus tard`)
+            .max(teamSize - 1, `Une équipe de ${teamSize} ne peut pas avoir plus de ${teamSize - 1} joueur(s) supplémentaire(s)`),
+    });
+};
+
+// Schéma par défaut pour Squad (4 joueurs) - pour compatibilité
+export const teamRegistrationSchema = getTeamRegistrationSchema(4);
 
 // Schéma pour rejoindre une équipe
 export const joinTeamSchema = z.object({

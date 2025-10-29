@@ -6,6 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Users, Crown, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -13,6 +14,7 @@ import VideoUpload from '@/components/VideoUpload';
 import { useCloudinaryUpload } from '@/hooks/useCloudinaryUpload';
 import { getTeamRegistrationSchema, TeamRegistrationFormData } from '@/lib/validations';
 import { TournamentService } from '@/services/tournamentService';
+import { Tournament } from '@/types/tournament-multi';
 import { GameModeUtils } from '@/types/game-modes';
 
 const countries = [
@@ -24,7 +26,7 @@ const countries = [
 import InscriptionClosed from '@/components/InscriptionClosed';
 import { isRegistrationOpen } from '@/lib/utils';
 
-export default function InscriptionPage() {
+export default function InscriptionMPPage() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDeviceCheckModal, setShowDeviceCheckModal] = useState(false);
@@ -36,8 +38,9 @@ export default function InscriptionPage() {
     type UploadStates = { [key: string]: UploadState };
     const [uploadStates, setUploadStates] = useState<UploadStates>({});
     const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
-    const [teamSize, setTeamSize] = useState<number>(4); // Par défaut Squad
-    const [gameModeName, setGameModeName] = useState<string>('Battle Royale Squad');
+    const [activeTournament, setActiveTournament] = useState<Tournament | null>(null);
+    const [teamSize, setTeamSize] = useState<number>(5); // Par défaut 5v5
+    const [gameModeName, setGameModeName] = useState<string>('Multijoueur 5v5');
     const { upload } = useCloudinaryUpload();
 
     const {
@@ -79,8 +82,8 @@ export default function InscriptionPage() {
                 return;
             }
 
-            // Vérifier que chaque joueur a uploadé sa vidéo
-            for (let i = 0; i < (data.players?.length || 0); i++) {
+            // Vérifier que tous les joueurs ont uploadé leur vidéo
+            for (let i = 0; i < data.players.length; i++) {
                 if (!uploadStates[`player-${i}`]?.uploadedUrl) {
                     toast.error(`La vidéo de device check du joueur ${i + 1} est obligatoire`);
                     setIsSubmitting(false);
@@ -88,159 +91,165 @@ export default function InscriptionPage() {
                 }
             }
 
-            // Ajouter les URLs des vidéos aux données
-            const completeData = {
+            // Préparer les données avec les URLs des vidéos
+            const formData = {
                 ...data,
                 captain: {
                     ...data.captain,
                     deviceCheckVideo: uploadStates.captain.uploadedUrl,
                 },
-                players: (data.players || []).map((player) => ({
+                players: data.players.map((player, idx) => ({
                     ...player,
+                    deviceCheckVideo: uploadStates[`player-${idx}`].uploadedUrl || '',
                 })),
             };
 
-            // Préparer les données pour l'API (sans code, il sera généré côté serveur)
-            const teamData = {
-                ...completeData,
-                tournamentType: 'br', // Type de tournoi Battle Royale
-                status: completeData.players.length === teamSize - 1 ? 'complete' : 'incomplete',
-                createdAt: new Date(),
-            };
-
-            // Appel API pour créer l'équipe
             const response = await fetch('/api/teams/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(teamData),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...formData,
+                    tournamentType: 'mp', // Indiquer que c'est un tournoi MP
+                }),
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                if (errorData.error) {
-                    toast.error(errorData.error);
-                    setIsSubmitting(false);
-                    return;
-                }
-                throw new Error(errorData.error || 'Erreur lors de l&apos;inscription');
-            }
 
             const result = await response.json();
 
-            toast.success('Équipe créée avec succès !');
-
-            // Rediriger vers la page de confirmation avec le code d&apos;équipe retourné par l'API
-            router.push(`/inscription/confirmation?code=${result.teamCode}`);
-
-        } catch (error: unknown) {
-            if (error instanceof Error && error.message === "Ce nom d&apos;équipe est déjà pris") {
-                toast.error(error.message);
-                // Pas de console.error ici pour l'erreur métier
-            } else {
-                toast.error('Erreur lors de l&apos;inscription. Veuillez réessayer.');
-                console.error('Erreur inscription:', error);
+            if (!response.ok) {
+                throw new Error(result.error || 'Erreur lors de l\'inscription');
             }
+
+            toast.success('Équipe créée avec succès !');
+            router.push(`/inscription/confirmation-mp?code=${result.teamCode}`);
+        } catch (error) {
+            console.error('Erreur lors de l\'inscription:', error);
+            toast.error(error instanceof Error ? error.message : 'Une erreur est survenue');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Gestion upload vidéo pour chaque joueur
-    const handleVideoUpload = async (file: File, playerKey: string) => {
+    const handleVideoUpload = async (file: File, fieldKey: string) => {
+        setUploadStates(prev => ({
+            ...prev,
+            [fieldKey]: { isUploading: true, uploadedUrl: undefined, error: null }
+        }));
+
         try {
+            const result = await upload(file);
+            // Extraire l'URL sécurisée de l'objet Cloudinary
+            const videoUrl = result.secure_url;
+            
             setUploadStates(prev => ({
                 ...prev,
-                [playerKey]: { isUploading: true, error: null }
+                [fieldKey]: { isUploading: false, uploadedUrl: videoUrl, error: null }
             }));
 
-            console.log('Démarrage upload pour:', playerKey, file.name);
-            const result = await upload(file, 'device-checks');
-            console.log('Upload terminé:', result.secure_url);
-
-            setUploadStates(prev => ({
-                ...prev,
-                [playerKey]: {
-                    isUploading: false,
-                    uploadedUrl: result.secure_url,
-                    error: null
-                }
-            }));
-
-            // Mettre à jour le formulaire avec l'URL de la vidéo
-            if (playerKey === 'captain') {
-                setValue('captain.deviceCheckVideo', result.secure_url);
-            } else if (playerKey.startsWith('player-')) {
-                const idx = Number(playerKey.split('-')[1]);
-                setValue(`players.${idx}.deviceCheckVideo`, result.secure_url);
+            // Mettre à jour le formulaire
+            if (fieldKey === 'captain') {
+                setValue('captain.deviceCheckVideo', videoUrl);
+            } else {
+                const idx = parseInt(fieldKey.split('-')[1]);
+                setValue(`players.${idx}.deviceCheckVideo`, videoUrl);
             }
 
             toast.success('Vidéo uploadée avec succès !');
-
         } catch (error) {
             console.error('Erreur upload:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Erreur lors de l&apos;upload de la vidéo';
-
+            const errorMessage = error instanceof Error ? error.message : 'Erreur lors de l\'upload';
             setUploadStates(prev => ({
                 ...prev,
-                [playerKey]: {
-                    isUploading: false,
-                    error: errorMessage
-                }
+                [fieldKey]: { isUploading: false, uploadedUrl: undefined, error: errorMessage }
             }));
-
             toast.error(errorMessage);
         }
     };
 
-    // Charger le tournoi BR actif et déterminer la taille d'équipe
+    // Charger le tournoi MP actif au montage
     useEffect(() => {
-        const loadActiveTournament = async () => {
+        const loadTournament = async () => {
             try {
-                const tournament = await TournamentService.getActiveBRTournament();
+                const tournament = await TournamentService.getActiveMPTournament();
                 if (tournament) {
+                    setActiveTournament(tournament);
                     const size = GameModeUtils.getTeamSize(tournament.gameMode);
+                    const modeName = GameModeUtils.getDisplayName(tournament.gameMode);
                     setTeamSize(size);
-                    setGameModeName(GameModeUtils.getDisplayName(tournament.gameMode));
-                    
-                    // Ne pas initialiser les joueurs automatiquement
+                    setGameModeName(modeName);
+
+                    // Ne pas pré-remplir les joueurs automatiquement
                     // Les joueurs seront ajoutés manuellement via le bouton "Ajouter un coéquipier"
                     reset({
-                        teamName: size === 1 ? undefined : '',
+                        teamName: '',
                         captain: {
                             pseudo: '',
                             country: '',
                             whatsapp: '',
-                            deviceCheckVideo: ''
+                            deviceCheckVideo: '',
                         },
-                        players: [] // Tableau vide au départ
+                        players: [], // Tableau vide au départ
                     });
                 }
-                
+            } catch (error) {
+                console.error('Erreur lors du chargement du tournoi:', error);
+            }
+        };
+
+        loadTournament();
+    }, [reset]);
+
+    // Vérifier l'ouverture des inscriptions
+    useEffect(() => {
+        const checkRegistrationStatus = async () => {
+            try {
                 const isOpen = await isRegistrationOpen();
                 setRegistrationOpen(isOpen);
             } catch (error) {
-                console.error('Erreur lors du chargement du tournoi:', error);
+                console.error('Erreur lors de la vérification des inscriptions:', error);
                 setRegistrationOpen(false);
             }
         };
 
-        loadActiveTournament();
-    }, [reset]);
+        checkRegistrationStatus();
+    }, []);
 
-    // Affichage de chargement pendant la vérification
     if (registrationOpen === null) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
-                <div className="text-white text-xl">Vérification des inscriptions...</div>
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+                <Navbar />
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center text-white">
+                    Vérification des inscriptions...
+                </div>
+                <Footer />
             </div>
         );
     }
 
-    // Vérifie ouverture inscription côté client
     if (!registrationOpen) {
         return <InscriptionClosed />;
+    }
+
+    if (!activeTournament) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+                <Navbar />
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="bg-red-500/20 rounded-2xl p-8 border border-red-700 text-center">
+                        <h1 className="text-2xl font-bold text-white mb-4">Aucun tournoi Multijoueur actif</h1>
+                        <p className="text-gray-300 mb-6">
+                            Il n&apos;y a actuellement aucun tournoi Multijoueur ouvert aux inscriptions.
+                        </p>
+                        <Link
+                            href="/"
+                            className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                            Retour à l&apos;accueil
+                        </Link>
+                    </div>
+                </div>
+                <Footer />
+            </div>
+        );
     }
 
     return (
@@ -250,83 +259,61 @@ export default function InscriptionPage() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Header */}
                 <div className="text-center mb-12">
-                    <div className="flex justify-center mb-6">
-                        <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
-                            <Users className="w-8 h-8 text-white" />
-                        </div>
-                    </div>
-                    <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-                        Inscription au tournoi
-                    </h1>
-                    {/* Badge du mode de jeu */}
-                    <div className="flex justify-center mb-4">
-                        <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                            🎮 {gameModeName} • {teamSize} joueur{teamSize > 1 ? 's' : ''}
+                    <h1 className="text-4xl lg:text-5xl font-bold mb-4">
+                        <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            Inscription Tournoi
                         </span>
+                        <br />
+                        <span className="text-white">{gameModeName}</span>
+                    </h1>
+                    <div className="inline-flex items-center gap-2 bg-blue-600/20 border border-blue-500/30 rounded-full px-6 py-2 mt-4">
+                        <span className="text-blue-300 font-semibold">🎮 {gameModeName} • {teamSize} joueur{teamSize > 1 ? 's' : ''}</span>
                     </div>
-                    <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                    <p className="text-gray-300 mt-6 max-w-2xl mx-auto">
                         {teamSize === 1 
-                            ? "Inscrivez-vous en solo pour participer au tournoi."
-                            : `Créez votre équipe de ${teamSize} joueurs. Le capitaine s'inscrit en premier, les autres pourront rejoindre avec le code d'équipe.`
+                            ? "Inscrivez-vous en solo pour participer au tournoi 1v1."
+                            : `Créez votre équipe de ${teamSize} joueurs pour participer au tournoi ${gameModeName}.`
                         }
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-                    {/* Informations de l&apos;équipe */}
+                {/* Formulaire */}
+                <form onSubmit={handleSubmit(onSubmit)} className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
+                    {/* Nom d'équipe - Masqué en 1v1 */}
                     {teamSize > 1 && (
-                        <section className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
-                            <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-                                <Users className="w-6 h-6 mr-3 text-blue-400" />
-                                Informations de l&apos;équipe
-                            </h2>
-
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Nom de l&apos;équipe *
-                                    </label>
-                                    <input
-                                        {...register('teamName')}
-                                        type="text"
-                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="Entrez le nom de votre équipe"
-                                    />
-                                    {errors.teamName && (
-                                        <p className="mt-1 text-sm text-red-400">{errors.teamName.message}</p>
-                                    )}
-                                </div>
-                            </div>
+                        <section className="mb-10">
+                            <h3 className="text-lg font-semibold text-white mb-4">Nom de l&apos;équipe</h3>
+                            <input
+                                {...register('teamName')}
+                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Nom de votre équipe"
+                            />
+                            {errors.teamName && (
+                                <p className="mt-2 text-sm text-red-400">{errors.teamName.message}</p>
+                            )}
                         </section>
                     )}
 
-                    {/* Capitaine / Joueur Solo */}
-                    <section className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
-                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-                            <Crown className="w-6 h-6 mr-3 text-yellow-400" />
+                    {/* Capitaine */}
+                    <section className="mb-10">
+                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <Crown className="w-5 h-5 text-yellow-400" />
                             {teamSize === 1 ? 'Vos informations' : 'Capitaine de l\'équipe'}
-                        </h2>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        </h3>
+                        <div className="grid md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Pseudo en jeu *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Pseudo *</label>
                                 <input
                                     {...register('captain.pseudo')}
-                                    type="text"
                                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Votre pseudo COD Mobile"
+                                    placeholder="Votre pseudo"
                                 />
                                 {errors.captain?.pseudo && (
                                     <p className="mt-1 text-sm text-red-400">{errors.captain.pseudo.message}</p>
                                 )}
                             </div>
-
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Pays *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Pays *</label>
                                 <select
                                     {...register('captain.country')}
                                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -335,7 +322,6 @@ export default function InscriptionPage() {
                                         if (selectedValue === 'Autre') {
                                             setShowOtherCaptainCountry(true);
                                             setOtherCaptainCountryValue('');
-                                            // Ne pas définir la valeur sur "Autre" pour forcer la saisie du pays personnalisé
                                         } else {
                                             setShowOtherCaptainCountry(false);
                                             setOtherCaptainCountryValue('');
@@ -353,28 +339,22 @@ export default function InscriptionPage() {
                                     <input
                                         type="text"
                                         className="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="Entrez votre pays *"
+                                        placeholder="Entrez votre pays"
                                         value={otherCaptainCountryValue}
                                         onChange={e => {
-                                            const customCountry = e.target.value;
-                                            setOtherCaptainCountryValue(customCountry);
-                                            setValue('captain.country', customCountry);
+                                            setOtherCaptainCountryValue(e.target.value);
+                                            setValue('captain.country', e.target.value);
                                         }}
-                                        required
                                     />
                                 )}
                                 {errors.captain?.country && (
                                     <p className="mt-1 text-sm text-red-400">{errors.captain.country.message}</p>
                                 )}
                             </div>
-
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Numéro WhatsApp *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">WhatsApp *</label>
                                 <input
                                     {...register('captain.whatsapp')}
-                                    type="tel"
                                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     placeholder="+33 6 12 34 56 78"
                                 />
@@ -382,13 +362,11 @@ export default function InscriptionPage() {
                                     <p className="mt-1 text-sm text-red-400">{errors.captain.whatsapp.message}</p>
                                 )}
                             </div>
-
-                            <div className="md:col-span-2">
+                            <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
                                     Vidéo device check *
                                     <button
                                         type="button"
-                                        aria-label="Aide device check"
                                         className="text-blue-400 hover:text-blue-600 focus:outline-none"
                                         onClick={() => setShowDeviceCheckModal(true)}
                                         tabIndex={0}
@@ -420,9 +398,9 @@ export default function InscriptionPage() {
                                             </h2>
                                             <ol className="list-decimal pl-5 text-gray-800 space-y-2 mb-4">
                                                 <li><b>Montre d&apos;abord les applications fréquemment utilisées</b> sur le téléphone avec lequel tu joues. <span className="text-blue-700 font-semibold">C&apos;est obligatoire !</span></li>
-                                                <li>Pour <b>iOS</b> : Va dans <b>Réglages &gt; Général &gt; VPN et gestion de l’appareil</b> et montre qu’il n’y a pas de profils suspects.</li>
-                                                <li>Pour <b>Android</b> : Ouvre le <b>gestionnaire de fichiers</b> et effectue une recherche avec des mots-clés comme <b>aimbot</b>, <b>wallhack</b>, <b>cheat</b>, <b>hack</b>, etc. Montre qu’aucun fichier ou appli suspect n’est présent.</li>
-                                                <li>Ensuite, ouvre <b>l’application COD Mobile</b>.</li>
+                                                <li>Pour <b>iOS</b> : Va dans <b>Réglages &gt; Général &gt; VPN et gestion de l&apos;appareil</b> et montre qu&apos;il n&apos;y a pas de profils suspects.</li>
+                                                <li>Pour <b>Android</b> : Ouvre le <b>gestionnaire de fichiers</b> et effectue une recherche avec des mots-clés comme <b>aimbot</b>, <b>wallhack</b>, <b>cheat</b>, <b>hack</b>, etc. Montre qu&apos;aucun fichier ou appli suspect n&apos;est présent.</li>
+                                                <li>Ensuite, ouvre <b>l&apos;application COD Mobile</b>.</li>
                                                 <li><b>La vidéo doit être claire, continue, sans coupure ni montage.</b></li>
                                             </ol>
                                             <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded mb-2 text-blue-800">
@@ -435,7 +413,7 @@ export default function InscriptionPage() {
                         </div>
                     </section>
 
-                    {/* Section coéquipiers */}
+                    {/* Section coéquipiers - Masquée en 1v1 */}
                     {teamSize > 1 && (
                         <section className="mb-10">
                             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -472,7 +450,6 @@ export default function InscriptionPage() {
                                             if (selectedValue === 'Autre') {
                                                 setOtherPlayersCountry(prev => ({ ...prev, [idx]: true }));
                                                 setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: '' }));
-                                                // Ne pas définir la valeur sur "Autre" pour forcer la saisie du pays personnalisé
                                             } else {
                                                 setOtherPlayersCountry(prev => ({ ...prev, [idx]: false }));
                                                 setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: '' }));
@@ -490,14 +467,12 @@ export default function InscriptionPage() {
                                         <input
                                             type="text"
                                             className="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="Entrez le pays *"
+                                            placeholder="Entrez le pays"
                                             value={otherPlayersCountryValue[idx] || ''}
                                             onChange={e => {
-                                                const customCountry = e.target.value;
-                                                setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: customCountry }));
-                                                setValue(`players.${idx}.country`, customCountry);
+                                                setOtherPlayersCountryValue(prev => ({ ...prev, [idx]: e.target.value }));
+                                                setValue(`players.${idx}.country`, e.target.value);
                                             }}
-                                            required
                                         />
                                     )}
                                     {errors.players?.[idx]?.country && (
@@ -505,10 +480,9 @@ export default function InscriptionPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">Numéro WhatsApp *</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">WhatsApp *</label>
                                     <input
                                         {...register(`players.${idx}.whatsapp` as const)}
-                                        type="tel"
                                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         placeholder="+33 6 12 34 56 78"
                                     />
@@ -553,7 +527,7 @@ export default function InscriptionPage() {
                                     <span>Inscription en cours...</span>
                                 </div>
                             ) : (
-                                'Créer l\'équipe'
+                                teamSize === 1 ? 'S\'inscrire' : 'Créer l\'équipe'
                             )}
                         </button>
 
