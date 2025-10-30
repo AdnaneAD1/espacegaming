@@ -19,11 +19,12 @@ export default function VideoUpload({
     uploadedUrl,
     error,
     required = false,
-    maxSize = 50
+    maxSize = 150
 }: VideoUploadProps) {
     const [dragActive, setDragActive] = useState(false);
     const [preview, setPreview] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [validationError, setValidationError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleDrag = (e: React.DragEvent) => {
@@ -56,11 +57,19 @@ export default function VideoUpload({
     const handleFile = (file: File) => {
         console.log('Fichier sélectionné:', file.name, file.type, file.size);
 
-        const validation = validateVideoFile(file);
+        // Réinitialiser l'erreur de validation
+        setValidationError(null);
+
+        const validation = validateVideoFile(file, maxSize);
         console.log('Résultat validation:', validation);
 
         if (!validation.isValid) {
             console.error('Validation échouée:', validation.error);
+            setValidationError(validation.error || 'Erreur de validation');
+            // Réinitialiser le champ file input pour permettre de resélectionner
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
             return;
         }
 
@@ -82,6 +91,7 @@ export default function VideoUpload({
     const clearFile = () => {
         setSelectedFile(null);
         setPreview(null);
+        setValidationError(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -107,7 +117,8 @@ export default function VideoUpload({
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="video/mp4,video/mov,video/avi,video/mkv"
+                        accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/*"
+                        capture="environment"
                         onChange={handleChange}
                         className="hidden"
                         aria-label="Sélectionner une vidéo de device check"
@@ -193,11 +204,27 @@ export default function VideoUpload({
                 </div>
             )}
 
-            {/* Message d'erreur */}
-            {error && (
-                <div className="mt-2 flex items-center space-x-2 text-red-400">
-                    <AlertCircle className="w-4 h-4" />
-                    <span className="text-sm">{error}</span>
+            {/* Messages d'erreur */}
+            {(error || validationError) && (
+                <div className="mt-3 space-y-2">
+                    {validationError && (
+                        <div className="flex items-start space-x-2 text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold mb-1">Erreur de validation</p>
+                                <p className="text-sm">{validationError}</p>
+                            </div>
+                        </div>
+                    )}
+                    {error && (
+                        <div className="flex items-start space-x-2 text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold mb-1">Erreur d&apos;upload</p>
+                                <p className="text-sm">{error}</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -12,6 +12,8 @@ const admins = [
   { name: 'Samuel', email: 'samuel@espace-gaming-codm.com' },
   { name: 'Sandra', email: 'sandra@espace-gaming-codm.com' },
   { name: 'Adnane', email: 'adnane@espace-gaming-codm.com' },
+  { name: 'Nabil', email: 'nabil@espace-gaming-codm.com' },
+  { name: 'Etienne', email: 'etienne@espace-gaming-codm.com' },
 ];
 
 // Fonction pour générer le mot de passe selon le nom (sans accent, sans espace, minuscule)

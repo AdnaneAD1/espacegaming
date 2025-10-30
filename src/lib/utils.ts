@@ -71,21 +71,32 @@ export function formatWhatsApp(number: string): string {
 }
 
 // Fonction pour valider le format vidéo
-export function validateVideoFile(file: File): { isValid: boolean; error?: string } {
-    const allowedTypes = ['video/mp4', 'video/mov', 'video/avi', 'video/mkv'];
-    const maxSize = 50 * 1024 * 1024; // 50MB
+export function validateVideoFile(file: File, maxSizeMB: number = 150): { isValid: boolean; error?: string } {
+    const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+    const maxSize = maxSizeMB * 1024 * 1024; // Convertir MB en bytes
+    const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
 
-    if (!allowedTypes.includes(file.type)) {
+    // Vérifier le type de fichier
+    if (!allowedTypes.includes(file.type) && !file.type.startsWith('video/')) {
         return {
             isValid: false,
-            error: 'Format vidéo non supporté. Utilisez MP4, MOV, AVI ou MKV.',
+            error: `Format vidéo non supporté (${file.type}). Utilisez MP4, MOV, AVI ou MKV.`,
         };
     }
 
+    // Vérifier la taille
     if (file.size > maxSize) {
         return {
             isValid: false,
-            error: 'La vidéo doit faire moins de 50MB.',
+            error: `La vidéo est trop volumineuse (${fileSizeMB} MB). Taille maximale : ${maxSizeMB} MB.`,
+        };
+    }
+
+    // Vérifier que le fichier n'est pas vide
+    if (file.size === 0) {
+        return {
+            isValid: false,
+            error: 'Le fichier vidéo est vide. Veuillez sélectionner une vidéo valide.',
         };
     }
 
