@@ -117,8 +117,7 @@ export default function VideoUpload({
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/*"
-                        capture="environment"
+                        accept="video/*"
                         onChange={handleChange}
                         className="hidden"
                         aria-label="Sélectionner une vidéo de device check"
