@@ -119,17 +119,8 @@ export default function ClassementFinalMP() {
                 // Stocker les matchs pour l'affichage
                 const matchesData: MatchData[] = matchesSnapshot.docs.map(doc => ({
                     id: doc.id,
-                    team1Id: doc.data().team1Id,
-                    team1Name: doc.data().team1Name,
-                    team2Id: doc.data().team2Id,
-                    team2Name: doc.data().team2Name,
-                    winnerId: doc.data().winnerId,
-                    status: doc.data().status,
-                    phaseType: doc.data().phaseType,
-                    groupName: doc.data().groupName,
-                    round: doc.data().round,
-                    matchNumber: doc.data().matchNumber
-                }));
+                    ...doc.data()
+                })) as MatchData[];
                 setMatches(matchesData);
 
                 // Calculer les statistiques pour chaque équipe
@@ -454,7 +445,11 @@ export default function ClassementFinalMP() {
                     <div className="space-y-8">
                         {/* Podium en haut si le tournoi est terminé */}
                         {isTournamentComplete && teams.length >= 3 && (
-                            <Podium teams={teams.slice(0, 3)} />
+                            <Podium 
+                                teams={teams} 
+                                tournamentFormat={activeTournament?.customFormat?.tournamentFormat || 'elimination_direct'}
+                                matches={matches}
+                            />
                         )}
                         
                         {/* Contenu des onglets */}

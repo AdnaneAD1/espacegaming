@@ -137,7 +137,14 @@ export default function TournamentManager({ teams, tournamentId, onBackToList }:
       }
     });
 
-    // Calculer la moyenne et trier par points
+    // Calculer la moyenne des points pour chaque équipe
+    Object.values(teamStats).forEach(team => {
+      if (team.gamesPlayed > 0) {
+        team.averagePoints = team.totalPoints / team.gamesPlayed;
+      }
+    });
+
+    // Trier par points totaux, puis kills, puis moyenne
     setRankings(Object.values(teamStats).sort((a, b) => {
       if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
       if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills;
@@ -367,7 +374,7 @@ export default function TournamentManager({ teams, tournamentId, onBackToList }:
               </button>
             )}
             <Trophy className="w-6 h-6 lg:w-8 lg:h-8 text-yellow-500 flex-shrink-0" />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 max-w-full overflow-hidden">
               <h2 className="text-lg lg:text-2xl font-bold text-gray-900 truncate">
                 {tournament ? (
                   <>
@@ -378,7 +385,9 @@ export default function TournamentManager({ teams, tournamentId, onBackToList }:
                 ) : 'Gestion du Tournoi'}
               </h2>
               {tournament && (
-                <p className="text-xs lg:text-sm text-gray-500 truncate">{tournament.description}</p>
+                <p className="text-xs lg:text-sm text-gray-500 line-clamp-2 break-words max-w-full">
+                  {tournament.description}
+                </p>
               )}
               {tournamentId && (
                 <p className="text-xs text-gray-400 truncate">ID: {tournamentId}</p>

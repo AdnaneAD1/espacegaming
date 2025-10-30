@@ -505,7 +505,7 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
                               }
                             }
                           }))}
-                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                          className="w-full bg-white text-gray-900 px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                         >
                           <option value={3}>3 équipes par groupe</option>
                           <option value={4}>4 équipes par groupe</option>
@@ -530,7 +530,7 @@ export default function TournamentManagement({ onManageTournament }: TournamentM
                               }
                             }
                           }))}
-                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                          className="w-full bg-white text-gray-900 px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                         >
                           <option value={1}>1 qualifié par groupe</option>
                           <option value={2}>2 qualifiés par groupe</option>

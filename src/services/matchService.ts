@@ -170,12 +170,9 @@ export class MatchService {
     // Créer les matchs du premier tour
     const numMatches = Math.floor(shuffledTeams.length / 2);
     
-    // Calculer le round correct en fonction du nombre d'équipes
-    // Par exemple : 8 équipes = 3 rounds total, premier tour = round 1 (quarts)
-    //               4 équipes = 2 rounds total, premier tour = round 1 (demi)
-    //               2 équipes = 1 round total, premier tour = round 1 (finale)
-    const totalRounds = this.getNumberOfRounds(shuffledTeams.length);
-    const firstRoundNumber = totalRounds - Math.ceil(Math.log2(numMatches));
+    // Le premier tour d'élimination est toujours round 1
+    // Les tours suivants seront générés avec round 2, 3, etc.
+    const firstRoundNumber = 1;
     
     for (let i = 0; i < numMatches; i++) {
       const team1 = shuffledTeams[i * 2];
@@ -185,7 +182,7 @@ export class MatchService {
         tournamentId,
         gameMode,
         phaseType: 'elimination',
-        round: firstRoundNumber + 1,
+        round: firstRoundNumber,
         matchNumber: i + 1,
         team1Id: team1.id,
         team1Name: team1.name,
@@ -226,8 +223,19 @@ export class MatchService {
     const winners: { winnerId: string; winnerName: string }[] = [];
     const losers: { loserId: string; loserName: string }[] = [];
     
+    let hasFinale = false;
+    let hasThirdPlace = false;
+    
     matchesSnapshot.docs.forEach(doc => {
       const match = doc.data() as TournamentMatch;
+      
+      // Identifier si c'est la finale ou la petite finale
+      if (match.isThirdPlaceMatch) {
+        hasThirdPlace = true;
+      } else {
+        hasFinale = true;
+      }
+      
       if (match.winnerId && match.winnerName) {
         winners.push({ winnerId: match.winnerId, winnerName: match.winnerName });
       }
@@ -235,6 +243,18 @@ export class MatchService {
         losers.push({ loserId: match.loserId, loserName: match.loserName });
       }
     });
+    
+    // Si on a exactement 1 gagnant et que c'est la finale ET la petite finale qui sont terminées
+    if (winners.length === 1 && hasFinale && hasThirdPlace) {
+      console.log('🏆 La finale et la petite finale sont terminées. Pas de tour suivant à générer.');
+      return;
+    }
+    
+    // Si on a 1 gagnant mais qu'il manque encore un match (finale ou petite finale)
+    if (winners.length === 1) {
+      console.log('⏳ Un match final est terminé, mais il reste encore un match à jouer.');
+      return;
+    }
     
     if (winners.length < 2) {
       console.log('Pas assez de gagnants pour créer le tour suivant');
@@ -621,9 +641,8 @@ export class MatchService {
     const matchesRef = collection(db, `tournaments/${tournamentId}/matches`);
     const numMatches = Math.floor(shuffledTeams.length / 2);
     
-    // Calculer le round correct en fonction du nombre d'équipes qualifiées
-    const totalRounds = this.getNumberOfRounds(shuffledTeams.length);
-    const firstRoundNumber = totalRounds - Math.ceil(Math.log2(numMatches));
+    // Le premier tour d'élimination après les groupes est toujours round 1
+    const firstRoundNumber = 1;
 
     for (let i = 0; i < numMatches; i++) {
       const team1 = shuffledTeams[i * 2];
@@ -633,7 +652,7 @@ export class MatchService {
         tournamentId,
         gameMode: tournament.gameMode,
         phaseType: 'elimination',
-        round: firstRoundNumber + 1,
+        round: firstRoundNumber,
         matchNumber: i + 1,
         team1Id: team1.teamId,
         team1Name: team1.teamName,

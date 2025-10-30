@@ -14,6 +14,7 @@ interface MatchData {
     groupName?: string;
     round?: number;
     matchNumber: number;
+    isThirdPlaceMatch?: boolean;
 }
 
 interface MatchesViewProps {
@@ -21,26 +22,30 @@ interface MatchesViewProps {
 }
 
 export default function MatchesView({ matches }: MatchesViewProps) {
-    // Calculer le nombre total de rounds d'élimination
+    // Calculer le nombre total de rounds prévus basé sur le nombre d'équipes au premier round
     const eliminationMatches = matches.filter(m => m.phaseType === 'elimination');
-    const maxRound = eliminationMatches.length > 0 
-        ? Math.max(...eliminationMatches.map(m => m.round || 0))
-        : 0;
     
-    // Fonction pour obtenir le nom du round dynamiquement
-    const getRoundName = (round: number, totalRounds: number): string => {
-        const roundsFromEnd = totalRounds - round + 1;
+    // Trouver le premier round et calculer le nombre d'équipes initiales
+    const rounds = eliminationMatches.map(m => m.round || 0).filter(r => r > 0);
+    const firstRound = rounds.length > 0 ? Math.min(...rounds) : 0;
+    const firstRoundMatches = eliminationMatches.filter(m => m.round === firstRound);
+    const initialTeamsCount = firstRoundMatches.length * 2;
+    const totalExpectedRounds = initialTeamsCount > 0 ? Math.ceil(Math.log2(initialTeamsCount)) : 0;
+    
+    // Fonction pour obtenir le nom du round basé sur le nombre total prévu
+    const getRoundName = (round: number): string => {
+        const roundsFromEnd = totalExpectedRounds - round;
         
         switch (roundsFromEnd) {
-            case 1:
+            case 0:
                 return 'Finale';
-            case 2:
+            case 1:
                 return 'Demi-finales';
-            case 3:
+            case 2:
                 return 'Quarts de finale';
-            case 4:
+            case 3:
                 return 'Huitièmes de finale';
-            case 5:
+            case 4:
                 return '16èmes de finale';
             default:
                 return `Tour ${round}`;
@@ -49,19 +54,21 @@ export default function MatchesView({ matches }: MatchesViewProps) {
     
     // Grouper les matchs par phase et groupe/round
     const groupedMatches: Record<string, MatchData[]> = {};
-    const groupKeys: Record<string, { type: 'group' | 'elimination', order: number }> = {};
+    const groupKeys: Record<string, { type: 'group' | 'elimination', order: number, subOrder: number }> = {};
     
     matches.forEach(match => {
         let key = 'Autres';
         
         if (match.phaseType === 'group_stage' && match.groupName) {
             key = `Phase de Groupes - ${match.groupName}`;
-            groupKeys[key] = { type: 'group', order: 0 };
+            groupKeys[key] = { type: 'group', order: 0, subOrder: 0 };
         } else if (match.phaseType === 'elimination' && match.round) {
-            const roundName = getRoundName(match.round, maxRound);
+            // Différencier la petite finale de la finale
+            const roundName = match.isThirdPlaceMatch ? 'Petite Finale (3ème place)' : getRoundName(match.round);
             key = `Phase Éliminatoire - ${roundName}`;
-            // Utiliser le numéro de round pour le tri (ordre croissant)
-            groupKeys[key] = { type: 'elimination', order: match.round };
+            // Utiliser le numéro de round pour le tri, et subOrder pour séparer finale et petite finale
+            // subOrder: 0 = finale, 1 = petite finale (pour qu'elle apparaisse juste après)
+            groupKeys[key] = { type: 'elimination', order: match.round, subOrder: match.isThirdPlaceMatch ? 1 : 0 };
         }
         
         if (!groupedMatches[key]) {
@@ -75,7 +82,7 @@ export default function MatchesView({ matches }: MatchesViewProps) {
         groupedMatches[key].sort((a, b) => a.matchNumber - b.matchNumber);
     });
     
-    // Trier les clés : d'abord les groupes (alphabétique), puis les phases éliminatoires (par round)
+    // Trier les clés : d'abord les groupes (alphabétique), puis les phases éliminatoires (par round puis subOrder)
     const sortedKeys = Object.keys(groupedMatches).sort((a, b) => {
         const keyA = groupKeys[a];
         const keyB = groupKeys[b];
@@ -85,9 +92,14 @@ export default function MatchesView({ matches }: MatchesViewProps) {
             return a.localeCompare(b);
         }
         
-        // Si les deux sont des phases éliminatoires, tri par numéro de round
+        // Si les deux sont des phases éliminatoires, tri par numéro de round puis subOrder
         if (keyA.type === 'elimination' && keyB.type === 'elimination') {
-            return keyA.order - keyB.order;
+            // D'abord par round
+            if (keyA.order !== keyB.order) {
+                return keyA.order - keyB.order;
+            }
+            // Puis par subOrder (finale avant petite finale)
+            return keyA.subOrder - keyB.subOrder;
         }
         
         // Les groupes avant les phases éliminatoires
@@ -134,11 +146,21 @@ export default function MatchesView({ matches }: MatchesViewProps) {
         <div className="space-y-8">
             {sortedKeys.map((groupName) => {
                 const groupMatches = groupedMatches[groupName];
+                const isThirdPlace = groupName.includes('Petite Finale');
+                
                 return (
-                <div key={groupName} className="bg-gray-800/60 backdrop-blur-lg rounded-2xl border border-gray-700 overflow-hidden">
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+                <div key={groupName} className={`bg-gray-800/60 backdrop-blur-lg rounded-2xl overflow-hidden ${
+                    isThirdPlace ? 'border-2 border-orange-500' : 'border border-gray-700'
+                }`}>
+                    <div className={`px-6 py-4 ${
+                        isThirdPlace 
+                            ? 'bg-gradient-to-r from-orange-600 to-amber-600' 
+                            : 'bg-gradient-to-r from-indigo-600 to-purple-600'
+                    }`}>
                         <h3 className="text-xl font-bold text-white">{groupName}</h3>
-                        <p className="text-sm text-indigo-100 mt-1">{groupMatches.length} match(s)</p>
+                        <p className={`text-sm mt-1 ${
+                            isThirdPlace ? 'text-orange-100' : 'text-indigo-100'
+                        }`}>{groupMatches.length} match(s)</p>
                     </div>
                     
                     <div className="p-6">

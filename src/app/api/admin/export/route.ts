@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
 
         let teams: Team[] = []
         let tournamentName = 'Tournoi Battle Royale CODM'
+        let gameMode: string | null = null
+        let isMultiplayer = false
 
         if (tournamentId && tournamentId !== 'all') {
             // Charger les équipes d'un tournoi spécifique
@@ -38,6 +40,13 @@ export async function GET(request: NextRequest) {
             
             const tournamentData = tournamentDoc.data()
             tournamentName = tournamentData?.name || 'Tournoi'
+            gameMode = tournamentData?.gameMode || null
+            
+            // Déterminer si c'est un mode multijoueur
+            if (gameMode) {
+                const mpModes = ['mp_1v1', 'mp_2v2', 'mp_5v5']
+                isMultiplayer = mpModes.includes(gameMode)
+            }
             
             const teamsSnapshot = await adminDb
                 .collection('tournaments')
@@ -224,23 +233,51 @@ export async function GET(request: NextRequest) {
             });
 
             const pdfBytes = await pdfDoc.save()
+            
+            // Nom de fichier avec mode, format et date
+            const dateStr = new Date().toISOString().split('T')[0]
+            // Extraire le mode : br_solo -> Solo, br_duo -> Duo, mp_1v1 -> 1v1, etc.
+            let modeStr = 'BR'
+            if (gameMode) {
+                if (gameMode.startsWith('mp_')) {
+                    modeStr = gameMode.replace('mp_', '').toUpperCase() // 1v1, 2v2, 5v5
+                } else if (gameMode.startsWith('br_')) {
+                    const brType = gameMode.replace('br_', '')
+                    modeStr = brType.charAt(0).toUpperCase() + brType.slice(1) // Solo, Duo, Squad
+                }
+            }
+            const pdfFileName = tournamentId && tournamentId !== 'all'
+                ? `${tournamentName.replace(/[^a-zA-Z0-9]/g, '_')}_${modeStr}_equipes_${dateStr}.pdf`
+                : `tournoi_CODM_equipes_${dateStr}.pdf`
+            
             return new NextResponse(Buffer.from(pdfBytes), {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/pdf',
-                    'Content-Disposition': 'attachment; filename="teams_validated.pdf"'
+                    'Content-Disposition': `attachment; filename="${pdfFileName}"`
                 }
             })
         }
 
         if (format === 'csv') {
-            // Générer CSV
-            const csvHeaders = [
+            // Générer CSV avec headers adaptés selon le mode
+            const baseHeaders = [
                 'Équipe ID',
                 'Nom Équipe',
                 'Code Équipe',
+                'Mode de jeu',
                 'Statut Équipe',
-                'Date Création',
+                'Date Création'
+            ]
+            
+            const playerHeaders = isMultiplayer ? [
+                'Joueur Pseudo',
+                'Joueur Pays',
+                'Joueur WhatsApp',
+                'Joueur Statut',
+                'Joueur Vidéo',
+                'Date Rejointe'
+            ] : [
                 'Capitaine Pseudo',
                 'Capitaine Pays',
                 'Capitaine WhatsApp',
@@ -252,43 +289,25 @@ export async function GET(request: NextRequest) {
                 'Joueur Vidéo',
                 'Date Rejointe'
             ]
+            
+            const csvHeaders = [...baseHeaders, ...playerHeaders]
 
             const csvRows = []
             csvRows.push(csvHeaders.join(','))
 
             teams.forEach(team => {
-                // Ligne pour le capitaine
-                csvRows.push([
-                    team.id,
-                    `"${team.name}"`,
-                    team.code,
-                    team.status,
-                    formatDate(team.createdAt),
-                    `"${team.captain.pseudo}"`,
-                    team.captain.country,
-                    team.captain.whatsapp,
-                    team.captain.status,
-                    '', // Pas de données joueur pour le capitaine
-                    '',
-                    '',
-                    '',
-                    team.captain.deviceCheckVideo || '',
-                    formatDate(team.captain.joinedAt)
-                ].join(','))
-
-                // Lignes pour les autres joueurs
-                team.players.forEach(player => {
-                    if (player.id !== team.captain.id) {
+                const gameModeDisplay = gameMode || 'BR'
+                
+                if (isMultiplayer) {
+                    // Mode MP : une ligne par joueur
+                    team.players.forEach(player => {
                         csvRows.push([
                             team.id,
                             `"${team.name}"`,
                             team.code,
+                            gameModeDisplay,
                             team.status,
                             formatDate(team.createdAt),
-                            '', // Pas de données capitaine pour les joueurs
-                            '',
-                            '',
-                            '',
                             `"${player.pseudo}"`,
                             player.country,
                             player.whatsapp,
@@ -296,20 +315,77 @@ export async function GET(request: NextRequest) {
                             player.deviceCheckVideo || '',
                             formatDate(player.joinedAt)
                         ].join(','))
-                    }
-                })
+                    })
+                } else {
+                    // Mode BR : ligne pour capitaine + lignes pour joueurs
+                    // Ligne pour le capitaine
+                    csvRows.push([
+                        team.id,
+                        `"${team.name}"`,
+                        team.code,
+                        gameModeDisplay,
+                        team.status,
+                        formatDate(team.createdAt),
+                        `"${team.captain.pseudo}"`,
+                        team.captain.country,
+                        team.captain.whatsapp,
+                        team.captain.status,
+                        '', // Pas de données joueur pour le capitaine
+                        '',
+                        '',
+                        '',
+                        team.captain.deviceCheckVideo || '',
+                        formatDate(team.captain.joinedAt)
+                    ].join(','))
+
+                    // Lignes pour les autres joueurs
+                    team.players.forEach(player => {
+                        if (player.id !== team.captain.id) {
+                            csvRows.push([
+                                team.id,
+                                `"${team.name}"`,
+                                team.code,
+                                gameModeDisplay,
+                                team.status,
+                                formatDate(team.createdAt),
+                                '', // Pas de données capitaine pour les joueurs
+                                '',
+                                '',
+                                '',
+                                `"${player.pseudo}"`,
+                                player.country,
+                                player.whatsapp,
+                                player.status,
+                                player.deviceCheckVideo || '',
+                                formatDate(player.joinedAt)
+                            ].join(','))
+                        }
+                    })
+                }
             })
 
             const csvContent = csvRows.join('\n')
 
-            const fileName = tournamentId && tournamentId !== 'all' 
-                ? `tournoi-${tournamentId}-equipes-validees-${new Date().toISOString().split('T')[0]}.csv`
-                : `tournoi-codm-equipes-validees-${new Date().toISOString().split('T')[0]}.csv`
+            // Nom de fichier avec mode, format et date
+            const dateStr = new Date().toISOString().split('T')[0]
+            // Extraire le mode : br_solo -> Solo, br_duo -> Duo, mp_1v1 -> 1v1, etc.
+            let modeStr = 'BR'
+            if (gameMode) {
+                if (gameMode.startsWith('mp_')) {
+                    modeStr = gameMode.replace('mp_', '').toUpperCase() // 1v1, 2v2, 5v5
+                } else if (gameMode.startsWith('br_')) {
+                    const brType = gameMode.replace('br_', '')
+                    modeStr = brType.charAt(0).toUpperCase() + brType.slice(1) // Solo, Duo, Squad
+                }
+            }
+            const csvFileName = tournamentId && tournamentId !== 'all'
+                ? `${tournamentName.replace(/[^a-zA-Z0-9]/g, '_')}_${modeStr}_equipes_${dateStr}.csv`
+                : `tournoi_CODM_equipes_${dateStr}.csv`
             
             return new NextResponse(csvContent, {
                 headers: {
                     'Content-Type': 'text/csv',
-                    'Content-Disposition': `attachment; filename="${fileName}"`
+                    'Content-Disposition': `attachment; filename="${csvFileName}"`
                 }
             })
         }
@@ -321,6 +397,8 @@ export async function GET(request: NextRequest) {
                 tournament: {
                     id: tournamentId || 'legacy',
                     name: tournamentName,
+                    gameMode: gameMode || 'BR',
+                    isMultiplayer: isMultiplayer,
                     totalTeams: teams.length,
                     validatedTeams: teams.filter(t => t.status === 'validated').length,
                     totalPlayers: teams.reduce((acc, team) => acc + team.players.length, 0)
@@ -356,9 +434,21 @@ export async function GET(request: NextRequest) {
                 }))
             }
 
-            const jsonFileName = tournamentId && tournamentId !== 'all' 
-                ? `tournoi-${tournamentId}-${new Date().toISOString().split('T')[0]}.json`
-                : `tournoi-codm-${new Date().toISOString().split('T')[0]}.json`
+            // Nom de fichier avec mode, format et date
+            const dateStr = new Date().toISOString().split('T')[0]
+            // Extraire le mode : br_solo -> Solo, br_duo -> Duo, mp_1v1 -> 1v1, etc.
+            let modeStr = 'BR'
+            if (gameMode) {
+                if (gameMode.startsWith('mp_')) {
+                    modeStr = gameMode.replace('mp_', '').toUpperCase() // 1v1, 2v2, 5v5
+                } else if (gameMode.startsWith('br_')) {
+                    const brType = gameMode.replace('br_', '')
+                    modeStr = brType.charAt(0).toUpperCase() + brType.slice(1) // Solo, Duo, Squad
+                }
+            }
+            const jsonFileName = tournamentId && tournamentId !== 'all'
+                ? `${tournamentName.replace(/[^a-zA-Z0-9]/g, '_')}_${modeStr}_export_${dateStr}.json`
+                : `tournoi_CODM_export_${dateStr}.json`
             
             return NextResponse.json(exportData, {
                 headers: {

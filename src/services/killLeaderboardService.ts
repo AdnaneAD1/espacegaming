@@ -83,6 +83,7 @@ export class KillLeaderboardService {
     teamName: string,
     kills: number
   ): Promise<void> {
+    // ✅ Toujours comptabiliser le joueur, même avec 0 kill
     const playerStatsRef = doc(
       db, 
       `kill-leaderboards/modes/${gameMode}/${tournamentId}/players/${playerId}`
@@ -104,17 +105,17 @@ export class KillLeaderboardService {
         lastUpdated: serverTimestamp()
       });
     } else {
-      // Créer de nouvelles stats
+      // Créer de nouvelles stats (même si kills = 0)
       const newEntry: Omit<KillLeaderboardEntry, 'position' | 'positionChange'> = {
         playerId,
         playerName,
         teamId,
         teamName,
         killStats: {
-          totalKills: kills,
+          totalKills: kills, // Peut être 0
           gamesPlayed: 1,
-          averageKillsPerGame: kills,
-          bestSingleGame: kills
+          averageKillsPerGame: kills, // Peut être 0
+          bestSingleGame: kills // Peut être 0
         }
       };
       

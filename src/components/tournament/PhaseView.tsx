@@ -58,9 +58,51 @@ export default function PhaseView({ teams, matches, tournamentFormat, playersPer
         return groups;
     };
     
-    // Fonction pour calculer le classement d'un groupe
+    // Fonction pour calculer les statistiques d'un groupe (uniquement matchs de groupe)
     const getGroupStandings = (groupName: string, teamIds: Set<string>) => {
-        const groupTeams = teams.filter(t => teamIds.has(t.id));
+        // Récupérer uniquement les matchs de ce groupe
+        const groupMatches = matches.filter(m => 
+            m.phaseType === 'group_stage' && 
+            m.groupName === groupName &&
+            m.status === 'completed'
+        );
+        
+        // Calculer les stats uniquement pour les matchs du groupe
+        const teamStats: Record<string, { wins: number; losses: number; points: number; totalKills: number; roundsWon: number }> = {};
+        
+        // Initialiser les stats pour toutes les équipes du groupe
+        teamIds.forEach(teamId => {
+            teamStats[teamId] = {
+                wins: 0,
+                losses: 0,
+                points: 0,
+                totalKills: 0,
+                roundsWon: 0
+            };
+        });
+        
+        // Calculer les stats depuis les matchs du groupe
+        groupMatches.forEach(match => {
+            if (match.winnerId && match.winnerId in teamStats) {
+                teamStats[match.winnerId].wins += 1;
+                teamStats[match.winnerId].points += 3;
+            }
+            
+            const loserId = match.winnerId === match.team1Id ? match.team2Id : match.team1Id;
+            if (loserId && loserId in teamStats) {
+                teamStats[loserId].losses += 1;
+            }
+        });
+        
+        // Créer le classement avec les stats du groupe
+        const groupTeams = teams.filter(t => teamIds.has(t.id)).map(team => ({
+            ...team,
+            wins: teamStats[team.id]?.wins || 0,
+            losses: teamStats[team.id]?.losses || 0,
+            points: teamStats[team.id]?.points || 0,
+            // On garde totalKills et roundsWon globaux car ils ne sont pas affichés dans les groupes
+        }));
+        
         return groupTeams.sort((a, b) => {
             if (b.points !== a.points) return b.points - a.points;
             if (b.wins !== a.wins) return b.wins - a.wins;
@@ -86,7 +128,49 @@ export default function PhaseView({ teams, matches, tournamentFormat, playersPer
     
     // Rendu pour le format "Groupe uniquement"
     if (tournamentFormat === 'groups_only') {
-        const sortedTeams = [...teams].sort((a, b) => {
+        // Récupérer uniquement les matchs de la phase de groupes
+        const groupMatches = matches.filter(m => 
+            m.phaseType === 'group_stage' &&
+            m.status === 'completed'
+        );
+        
+        // Calculer les stats uniquement pour les matchs de groupe
+        const teamStats: Record<string, { wins: number; losses: number; points: number; matchesPlayed: number }> = {};
+        
+        // Initialiser les stats pour toutes les équipes
+        teams.forEach(team => {
+            teamStats[team.id] = {
+                wins: 0,
+                losses: 0,
+                points: 0,
+                matchesPlayed: 0
+            };
+        });
+        
+        // Calculer les stats depuis les matchs de groupe
+        groupMatches.forEach(match => {
+            if (match.winnerId && match.winnerId in teamStats) {
+                teamStats[match.winnerId].wins += 1;
+                teamStats[match.winnerId].points += 3;
+                teamStats[match.winnerId].matchesPlayed += 1;
+            }
+            
+            const loserId = match.winnerId === match.team1Id ? match.team2Id : match.team1Id;
+            if (loserId && loserId in teamStats) {
+                teamStats[loserId].losses += 1;
+                teamStats[loserId].matchesPlayed += 1;
+            }
+        });
+        
+        // Créer le classement avec les stats de groupe
+        const sortedTeams = teams.map(team => ({
+            ...team,
+            wins: teamStats[team.id]?.wins || 0,
+            losses: teamStats[team.id]?.losses || 0,
+            points: teamStats[team.id]?.points || 0,
+            matchesPlayed: teamStats[team.id]?.matchesPlayed || 0,
+            // On garde totalKills et roundsWon globaux
+        })).sort((a, b) => {
             if (b.points !== a.points) return b.points - a.points;
             if (b.wins !== a.wins) return b.wins - a.wins;
             return b.totalKills - a.totalKills;

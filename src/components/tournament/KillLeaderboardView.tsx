@@ -129,12 +129,39 @@ export default function KillLeaderboardView({ leaderboard }: KillLeaderboardView
             </div>
 
             {/* Podium Top 3 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
                 {leaderboard.entries.slice(0, 3).map((entry, index) => {
                     const positions = [
-                        { bg: 'from-yellow-500 to-yellow-600', icon: Trophy, label: '1er', border: 'border-yellow-400' },
-                        { bg: 'from-gray-400 to-gray-500', icon: Medal, label: '2ème', border: 'border-gray-400' },
-                        { bg: 'from-orange-600 to-orange-700', icon: Award, label: '3ème', border: 'border-orange-600' }
+                        { 
+                            bg: 'from-yellow-400 via-yellow-500 to-amber-600', 
+                            icon: Trophy, 
+                            label: '1er', 
+                            border: 'border-yellow-400',
+                            shadow: 'shadow-[0_0_30px_rgba(234,179,8,0.5)]',
+                            ring: 'ring-4 ring-yellow-400/40',
+                            iconBg: 'bg-yellow-500/20',
+                            height: 'min-h-[22rem]'
+                        },
+                        { 
+                            bg: 'from-slate-300 via-slate-400 to-slate-600', 
+                            icon: Medal, 
+                            label: '2ème', 
+                            border: 'border-slate-300',
+                            shadow: 'shadow-[0_0_25px_rgba(148,163,184,0.4)]',
+                            ring: 'ring-4 ring-slate-300/40',
+                            iconBg: 'bg-slate-400/20',
+                            height: 'min-h-[20rem]'
+                        },
+                        { 
+                            bg: 'from-orange-500 via-orange-600 to-orange-700', 
+                            icon: Award, 
+                            label: '3ème', 
+                            border: 'border-orange-500',
+                            shadow: 'shadow-[0_0_25px_rgba(249,115,22,0.4)]',
+                            ring: 'ring-4 ring-orange-500/40',
+                            iconBg: 'bg-orange-500/20',
+                            height: 'min-h-[18rem]'
+                        }
                     ];
                     const pos = positions[index];
                     const Icon = pos.icon;
@@ -142,33 +169,66 @@ export default function KillLeaderboardView({ leaderboard }: KillLeaderboardView
                     return (
                         <div
                             key={entry.playerId}
-                            className={`bg-gradient-to-br ${pos.bg} rounded-2xl p-6 text-white transform hover:scale-105 transition-transform duration-200 border-2 ${pos.border} ${
-                                index === 0 ? 'md:order-2 md:scale-110' : index === 1 ? 'md:order-1' : 'md:order-3'
-                            }`}
+                            className={`${index === 0 ? 'md:order-2 md:scale-110' : index === 1 ? 'md:order-1' : 'md:order-3'} transform hover:scale-105 transition-all duration-300`}
                         >
-                            <div className="flex items-center justify-between mb-4">
-                                <Icon className="w-10 h-10" />
-                                <span className="text-3xl font-bold">{pos.label}</span>
-                            </div>
-                            <h3 className="text-2xl font-bold mb-1">{entry.playerName}</h3>
-                            <p className="text-sm opacity-90 mb-4">{entry.teamName}</p>
-                            <div className="space-y-2 text-sm opacity-90">
-                                <div className="flex justify-between">
-                                    <span>Total Kills:</span>
-                                    <span className="font-bold text-lg">{entry.killStats.totalKills}</span>
+                            <div className={`bg-gradient-to-br ${pos.bg} rounded-3xl p-6 text-white ${pos.height} flex flex-col justify-between ${pos.shadow} ${pos.ring} border-2 ${pos.border} relative overflow-hidden group`}>
+                                {/* Effet de brillance */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                
+                                {/* Particules décoratives */}
+                                <div className="absolute top-4 right-4 w-2 h-2 bg-white/50 rounded-full animate-ping"></div>
+                                <div className="absolute bottom-6 left-6 w-1.5 h-1.5 bg-white/30 rounded-full animate-pulse"></div>
+                                
+                                {/* Contenu */}
+                                <div className="relative z-10">
+                                    {/* En-tête avec icône et position */}
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className={`${pos.iconBg} p-3 rounded-xl backdrop-blur-sm`}>
+                                            <Icon className="w-12 h-12 drop-shadow-lg" />
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-5xl font-black drop-shadow-lg">
+                                                {pos.label}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Nom du joueur */}
+                                    <div className="text-center mb-2">
+                                        <h3 className="text-2xl font-black leading-tight drop-shadow-lg">
+                                            {entry.playerName}
+                                        </h3>
+                                        <p className="text-sm opacity-90 mt-1 truncate">{entry.teamName}</p>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>Matchs joués:</span>
-                                    <span className="font-bold">{entry.killStats.gamesPlayed}</span>
+                                
+                                {/* Statistiques */}
+                                <div className="relative z-10">
+                                    <div className="bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/20">
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between items-center">
+                                                <span className="opacity-90">Total Kills</span>
+                                                <span className="font-bold text-2xl">{entry.killStats.totalKills}</span>
+                                            </div>
+                                            <div className="h-px bg-white/20"></div>
+                                            <div className="flex justify-between">
+                                                <span className="opacity-90">Matchs</span>
+                                                <span className="font-bold">{entry.killStats.gamesPlayed}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="opacity-90">Moyenne</span>
+                                                <span className="font-bold">{entry.killStats.averageKillsPerGame.toFixed(1)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="opacity-90">Meilleur</span>
+                                                <span className="font-bold">{entry.killStats.bestSingleGame}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>Moyenne:</span>
-                                    <span className="font-bold">{entry.killStats.averageKillsPerGame.toFixed(1)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Meilleur match:</span>
-                                    <span className="font-bold">{entry.killStats.bestSingleGame}</span>
-                                </div>
+                                
+                                {/* Barre de lueur en bas */}
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/60 to-transparent"></div>
                             </div>
                         </div>
                     );

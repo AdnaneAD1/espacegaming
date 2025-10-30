@@ -51,16 +51,29 @@ export default function EliminationBracketTree({ rounds }: EliminationBracketTre
     const sortedRounds = Object.entries(regularRounds).sort(([a], [b]) => Number(a) - Number(b));
     const maxRound = Math.max(...Object.keys(regularRounds).map(Number));
     
-    // Noms des rounds
+    // Calculer le nombre total d'équipes au départ (depuis le premier round)
+    const firstRound = sortedRounds.length > 0 ? sortedRounds[0] : null;
+    const initialTeamsCount = firstRound ? firstRound[1].length * 2 : 0;
+    const totalExpectedRounds = initialTeamsCount > 0 ? Math.ceil(Math.log2(initialTeamsCount)) : 0;
+    
+    // Trouver le gagnant de la finale (uniquement si on est au dernier round prévu)
+    const isFinaleRound = maxRound === totalExpectedRounds;
+    const finaleMatch = isFinaleRound ? regularRounds[maxRound]?.find(m => m.status === 'completed' && m.winnerId) : null;
+    const tournamentWinner = finaleMatch ? {
+        teamId: finaleMatch.winnerId,
+        teamName: finaleMatch.winnerId === finaleMatch.team1Id ? finaleMatch.team1Name : finaleMatch.team2Name
+    } : null;
+    
+    // Noms des rounds basés sur le nombre total de rounds prévus
     const getRoundName = (roundNum: number) => {
-        const roundsCount = sortedRounds.length;
-        const roundIndex = roundsCount - roundNum + 1;
+        // Calculer la position du round par rapport à la fin
+        const roundsFromEnd = totalExpectedRounds - roundNum;
         
-        if (roundIndex === 0) return 'FINALE';
-        if (roundIndex === 1) return 'DEMI-FINALE';
-        if (roundIndex === 2) return 'QUART DE FINALE';
-        if (roundIndex === 3) return '8ÈME DE FINALE';
-        if (roundIndex === 4) return '16ÈME DE FINALE';
+        if (roundsFromEnd === 0) return 'FINALE';
+        if (roundsFromEnd === 1) return 'DEMI-FINALE';
+        if (roundsFromEnd === 2) return 'QUART DE FINALE';
+        if (roundsFromEnd === 3) return '8ÈME DE FINALE';
+        if (roundsFromEnd === 4) return '16ÈME DE FINALE';
         return `ROUND ${roundNum}`;
     };
 
@@ -192,6 +205,61 @@ export default function EliminationBracketTree({ rounds }: EliminationBracketTre
                             </div>
                         );
                     })}
+                    
+                    {/* Colonne du gagnant après la finale */}
+                    {tournamentWinner && sortedRounds.length > 0 && Number(sortedRounds[sortedRounds.length - 1][0]) === maxRound && (
+                        <div className="flex flex-col items-center justify-center ml-8">
+                            {/* Titre */}
+                            <div className="mb-6 px-6 py-3 rounded-xl font-black text-lg bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 text-white shadow-[0_0_30px_rgba(234,179,8,0.6)] animate-pulse">
+                                🏆 CHAMPION 🏆
+                            </div>
+                            
+                            {/* Carte du gagnant */}
+                            <div className="bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-600 rounded-2xl overflow-hidden w-72 shadow-[0_0_40px_rgba(234,179,8,0.8)] border-4 border-yellow-300 relative group">
+                                {/* Effet de brillance animé */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent opacity-50 group-hover:opacity-70 transition-opacity duration-500"></div>
+                                
+                                {/* Particules flottantes */}
+                                <div className="absolute top-4 right-4 w-3 h-3 bg-white rounded-full animate-ping"></div>
+                                <div className="absolute top-8 left-6 w-2 h-2 bg-white/70 rounded-full animate-pulse"></div>
+                                <div className="absolute bottom-8 right-8 w-2.5 h-2.5 bg-white/60 rounded-full animate-bounce"></div>
+                                
+                                {/* Contenu */}
+                                <div className="relative z-10 p-8">
+                                    {/* Icône trophée */}
+                                    <div className="flex justify-center mb-6">
+                                        <div className="bg-white/30 backdrop-blur-sm p-4 rounded-full">
+                                            <Trophy className="w-16 h-16 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Nom de l'équipe gagnante */}
+                                    <div className="text-center">
+                                        <h3 className="text-3xl font-black text-white mb-2 drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] leading-tight">
+                                            {tournamentWinner.teamName}
+                                        </h3>
+                                        <div className="inline-block bg-white/30 backdrop-blur-sm px-4 py-2 rounded-full">
+                                            <p className="text-sm font-bold text-white uppercase tracking-wider">
+                                                Vainqueur du Tournoi
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Barre de lueur en bas */}
+                                <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-transparent via-white to-transparent"></div>
+                            </div>
+                            
+                            {/* Confettis décoratifs */}
+                            <div className="mt-6 flex gap-2">
+                                <span className="text-3xl animate-bounce">🎉</span>
+                                <span className="text-3xl animate-bounce delay-100">🎊</span>
+                                <span className="text-3xl animate-bounce delay-200">🏆</span>
+                                <span className="text-3xl animate-bounce delay-100">🎊</span>
+                                <span className="text-3xl animate-bounce">🎉</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 
                 {/* Petite finale (3ème place) */}
@@ -277,6 +345,16 @@ export default function EliminationBracketTree({ rounds }: EliminationBracketTre
                     </div>
                 )}
             </div>
+            
+            {/* Animations CSS personnalisées */}
+            <style jsx>{`
+                .delay-100 {
+                    animation-delay: 100ms;
+                }
+                .delay-200 {
+                    animation-delay: 200ms;
+                }
+            `}</style>
         </div>
     );
 }
