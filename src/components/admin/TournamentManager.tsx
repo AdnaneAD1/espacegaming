@@ -705,7 +705,11 @@ export default function TournamentManager({ teams, tournamentId, onBackToList }:
                       onChange={(e) => setNewResult({ ...newResult, placement: parseInt(e.target.value) })}
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      {Array.from({ length: 25 }, (_, i) => i + 1).map(rank => (
+                      {Array.from({ 
+                        length: tournament?.gameMode 
+                          ? GAME_MODES_CONFIG[tournament.gameMode]?.maxPlayers || 25
+                          : 25 
+                      }, (_, i) => i + 1).map(rank => (
                         <option key={rank} value={rank}>
                           {rank === 1 ? '1er' : rank === 2 ? '2ème' : rank === 3 ? '3ème' : `${rank}ème`}
                         </option>

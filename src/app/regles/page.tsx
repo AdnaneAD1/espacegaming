@@ -12,6 +12,8 @@ const pointSystem = [
     { placement: "Top 21-30", points: 8, color: "text-blue-400" },
     { placement: "Top 31-40", points: 5, color: "text-blue-400" },
     { placement: "Top 41-50", points: 3, color: "text-blue-400" },
+    { placement: "Top 51-75", points: 2, color: "text-green-400" },
+    { placement: "Top 76-100", points: 1, color: "text-green-400" },
 ];
 
 const killPoints = [
@@ -90,7 +92,7 @@ export default function ReglesPage() {
                                     </div>
                                 </div>
                                 <p className="text-sm text-gray-400 mt-3">
-                                    💡 <strong>Important :</strong> Téléchargez toutes les maps avant d'être dans le salon
+                                    💡 <strong>Important :</strong> Téléchargez toutes les maps avant d&apos;être dans le salon
                                 </p>
                             </div>
                             <div>
@@ -264,6 +266,31 @@ export default function ReglesPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Note sur les limites par mode */}
+                        <div className="mt-6 p-4 bg-purple-900/30 rounded-lg border border-purple-600">
+                            <h4 className="text-purple-300 font-semibold mb-3">📊 Limites de participants par mode</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div className="bg-purple-800/20 rounded-lg p-3">
+                                    <div className="text-purple-400 font-semibold mb-1">Battle Royale Squad</div>
+                                    <div className="text-gray-300">Maximum : <strong className="text-white">25 équipes</strong></div>
+                                    <div className="text-gray-400 text-xs mt-1">Placements : 1-25</div>
+                                </div>
+                                <div className="bg-purple-800/20 rounded-lg p-3">
+                                    <div className="text-purple-400 font-semibold mb-1">Battle Royale Duo</div>
+                                    <div className="text-gray-300">Maximum : <strong className="text-white">50 équipes</strong></div>
+                                    <div className="text-gray-400 text-xs mt-1">Placements : 1-50</div>
+                                </div>
+                                <div className="bg-purple-800/20 rounded-lg p-3">
+                                    <div className="text-purple-400 font-semibold mb-1">Battle Royale Solo</div>
+                                    <div className="text-gray-300">Maximum : <strong className="text-white">100 joueurs</strong></div>
+                                    <div className="text-gray-400 text-xs mt-1">Placements : 1-100</div>
+                                </div>
+                            </div>
+                            <p className="text-purple-200 text-xs mt-3">
+                                💡 Le système de points est identique pour tous les modes BR
+                            </p>
+                        </div>
                     </section>
 
                     {/* Règles de jeu */}
@@ -279,8 +306,8 @@ export default function ReglesPage() {
                                     <li>• Configuration graphique et sensibilité libres</li>
                                     <li>• HUD personnalisé autorisé</li>
                                     <li>• Tous les appareils compatibles</li>
-                                    <li>• <strong>Maps :</strong> Isolated, Blackout et Alcatraz (à télécharger avant d'être dans le salon)</li>
-                                    <li>• <strong>Classes autorisées :</strong> Medic (Médecin), Pumped (Gonfle à bloc), Ninja, Rewind (Retour en arrière). Une 5ᵉ classe est laissée pour l'échange interne d'équipe mais n'est <strong>pas autorisée</strong> en jeu.</li>
+                                    <li>• <strong>Maps :</strong> Isolated, Blackout et Alcatraz (à télécharger avant d&apos;être dans le salon)</li>
+                                    <li>• <strong>Classes autorisées :</strong> Medic (Médecin), Pumped (Gonfle à bloc), Ninja, Rewind (Retour en arrière). Une 5ᵉ classe est laissée pour l&apos;échange interne d&apos;équipe mais n&apos;est <strong>pas autorisée</strong> en jeu.</li>
                                 </ul>
                             </div>
                             <div>
@@ -290,7 +317,7 @@ export default function ReglesPage() {
                                     <li>• Briefing des règles et consignes techniques</li>
                                     <li>• Mise en place des rooms et équipes</li>
                                     <li>• Contrôle préalable des participants</li>
-                                    <li>• Lancement du tournoi à l'heure prévue</li>
+                                    <li>• Lancement du tournoi à l&apos;heure prévue</li>
                                     <li>• Nombre de parties selon le tournoi</li>
                                     <li>• Screenshot ou vidéo de fin de partie recommandé pour toute contestation</li>
                                 </ul>
