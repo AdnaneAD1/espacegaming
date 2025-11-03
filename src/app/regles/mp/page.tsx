@@ -219,34 +219,62 @@ export default function ReglesMP() {
                                 <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Localisation</div>
                                 <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Assassin</div>
                                 <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Drone téléguidé</div>
+                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Surcadençage</div>
+                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Ingénieur</div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Section 6 - Talents d'agent interdits */}
+                    {/* Section 6 - Talents d'agent */}
                     <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center">
+                            <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
                                 <Users className="w-6 h-6 text-white" />
                             </div>
-                            <h2 className="text-2xl font-bold text-white">6. Talents d&apos;agent interdits ❌</h2>
+                            <h2 className="text-2xl font-bold text-white">6. Talents d&apos;agent</h2>
                         </div>
-                        <div className="text-gray-300">
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Bouclier convertible</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ UNITÉ CANINE</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ R.U.C.H.E.</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Lame de l&apos;ombre</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Charge sauvage</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Bouclier balistique</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Armure cinétique</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ TAK-5</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Noyau de réacteur</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Baliste EM3</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Outils de diversion</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Ravage</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Boîte de munitions</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Champ de contrôle</div>
+                        <div className="text-gray-300 space-y-6">
+                            {/* Talents autorisés */}
+                            <div>
+                                <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-3">
+                                    <h3 className="text-lg font-semibold text-green-400 mb-2">✅ Talents d&apos;agent AUTORISÉS</h3>
+                                    <p className="text-sm text-gray-300 mb-3">Les talents d&apos;agent suivants sont les SEULS autorisés en compétition. Tous les autres sont interdits.</p>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Annihilateur</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Griffe</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Machine à tuer</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Niveleuse</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Pic de gravité</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Canon à vortex gravitationnel</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Purificateur</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Épervier</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Tempête</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-2 text-sm text-center">✅ Machine de guerre</div>
+                                </div>
+                            </div>
+
+                            {/* Talents interdits */}
+                            <div>
+                                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-3">
+                                    <h3 className="text-lg font-semibold text-red-400 mb-2">❌ Talents d&apos;agent INTERDITS</h3>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Bouclier convertible</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ UNITÉ CANINE</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ R.U.C.H.E.</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Lame de l&apos;ombre</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Charge sauvage</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Bouclier balistique</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Armure cinétique</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ TAK-5</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Noyau de réacteur</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Baliste EM3</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Outils de diversion</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Ravage</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Boîte de munitions</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Champ de contrôle</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -259,30 +287,169 @@ export default function ReglesMP() {
                             </div>
                             <h2 className="text-2xl font-bold text-white">7. Accessoires d&apos;arme interdits ❌</h2>
                         </div>
-                        <div className="text-gray-300 space-y-2">
-                            <p className="text-red-400 font-semibold mb-3">Les accessoires suivants sont interdits :</p>
-                            <ul className="space-y-1 ml-4">
-                                <li>❌ AKIMBO</li>
-                                <li>❌ MUNITION ILLIMITÉE (RPD)</li>
-                                <li>❌ CHARGEUR 15 CARTOUCHES (AS VAL)</li>
-                                <li>❌ COMMOTION CÉRÉBRALE (DLQ33)</li>
-                                <li>❌ MUNITIONS CR AMAX M67</li>
-                                <li>❌ MUNITIONS FOUDROYANTES HS-0405</li>
-                                <li>❌ LANCEUR CANON M4</li>
-                                <li>❌ HADES LE CHERCHEUR DE CŒUR</li>
-                                <li>❌ CHARGEUR GROS CALIBRE HVK</li>
-                                <li>❌ CHARGEUR DRH OTM</li>
-                                <li>❌ TERMITE ET MUNITIONS EXPLOSIVES</li>
-                                <li>❌ CX9 ROND À POINTE CREUSE DE 9MM</li>
-                                <li>❌ MUNITION SNIPER DE HAUTE PRÉCISION (TYPE 19)</li>
-                                <li>❌ BOOSTER DE RECUL BP50</li>
-                                <li>❌ LEROY 438 MM BP50</li>
-                                <li>❌ BOOSTER DE RECUL MG42</li>
-                                <li>❌ CHARGEUR À TAMBOUR 125 CARTOUCHES MG42 6.5</li>
-                                <li>❌ CHARGEUR DE 32 CARTOUCHE USS9</li>
-                                <li>❌ HANDICAP</li>
-                                <li>❌ MUNITIONS 335 MM RAPIDE MG42</li>
-                            </ul>
+                        <div className="text-gray-300 space-y-4">
+                            {/* Accessoires généraux */}
+                            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-red-400 mb-3">🔧 Accessoires généraux (Toutes les armes)</h3>
+                                <ul className="space-y-1 ml-4 text-sm">
+                                    <li>❌ AKIMBO</li>
+                                    <li>❌ HANDICAP</li>
+                                    <li>❌ MUNITIONS THERMITE, SOUFFLE DU DRAGON, EXPLOSIVES, INCENDIAIRES</li>
+                                </ul>
+                            </div>
+
+                            {/* Accessoires par arme spécifique */}
+                            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-red-400 mb-3">🎯 Accessoires par arme spécifique</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Fusils à pompe :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Chargeur de Slug (Tous)</li>
+                                            <li>❌ Munitions foudroyantes (HS-0405)</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Fusil 3-Lignes :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Canon IMPÉRATRICE 514MM</li>
+                                            <li>❌ Bipied</li>
+                                            <li>❌ Crosse KOVALEVSKAYA LESTE</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">AS VAL :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Chargeur 15 cartouches</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">BP-50 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Booster de recul</li>
+                                            <li>❌ Canon Leroy 438mm</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">CR AMAX :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Munitions M67</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Arbalète :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Munitions Thermite, Gaz, Grenade collante</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">CX9 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Rond à pointe creuse de 9mm</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">DLQ33 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Commotion cérébrale</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">DRH :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Chargeur OTM</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Hades :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Le chercheur de cœur</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">HVK :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Chargeur gros calibre</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">M4 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Lanceur canon</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Pistolet automatique :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Canon court VDD 35MM</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">MG42 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Booster de recul</li>
+                                            <li>❌ Chargeur à tambour 125 cartouches 6.5</li>
+                                            <li>❌ Munitions 335mm rapide</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Oden :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Canon OWC Tireur d&apos;élite</li>
+                                            <li>❌ Canon OWC Tireur de précision</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Ram7 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Canon FORGE TAC Eclipse</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">RPD :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Munition illimitée</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">SKS :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Poignée avant tactique A</li>
+                                            <li>❌ Bande poignée granulés</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Type 19 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Munition sniper de haute précision</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Type 63 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Revêtement élastique aéroporté</li>
+                                            <li>❌ Canon Titane 16.4&quot;</li>
+                                            <li>❌ Canon Équipe d&apos;assaut 18.3&quot;</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">Tundra :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Canon Martelé 26.5&quot;</li>
+                                            <li>❌ Canon Équipe tigre 28.2&quot;</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-white mb-1">USS-9 :</p>
+                                        <ul className="space-y-1 ml-4">
+                                            <li>❌ Chargeur de 32 cartouches</li>
+                                            <li>❌ Canon Carabine Pro FSS</li>
+                                            <li>❌ Canon Carabine d&apos;usine 16.5&quot;</li>
+                                            <li>❌ Canon Premier intervenant 13.1&quot;</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -306,42 +473,61 @@ export default function ReglesMP() {
                         </div>
                     </div>
 
-                    {/* Section 9 - Séries de points interdites */}
+                    {/* Section 9 - Séries de points */}
                     <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center">
+                            <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
                                 <Trophy className="w-6 h-6 text-white" />
                             </div>
-                            <h2 className="text-2xl font-bold text-white">9. Séries de points interdites ❌</h2>
+                            <h2 className="text-2xl font-bold text-white">9. Séries de points</h2>
                         </div>
-                        <div className="text-gray-300">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Drone</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Drone amélioré</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Drone de brouillage</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Colis stratégique</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Tourelle manuelle</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Tourelle SAM</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Hélicoptère furtif</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Choc de VdR</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Hawk X3</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Essaim</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Coup de tonnerre</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Laser Orbital</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Tourelle</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Hélicoptère d&apos;attaque</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Napalm</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Frappe à dispersion</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ MQ-27 Dragonfire</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ XS1 Goliath</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Wheelson</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Gardien</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Flamenaut</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ ADAV</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Avion d&apos;assaut</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ RC-XD</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ S.R.A.</div>
-                                <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Largage aérien d&apos;urgence</div>
+                        <div className="text-gray-300 space-y-6">
+                            {/* Séries autorisées */}
+                            <div>
+                                <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-3">
+                                    <h3 className="text-lg font-semibold text-green-400 mb-2">✅ Séries de points AUTORISÉES</h3>
+                                    <p className="text-sm text-gray-300 mb-3">Les séries de points suivantes sont les SEULES autorisées en compétition. Toutes les autres sont interdites.</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-3 text-center">✅ Drone de chasse</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-3 text-center">✅ Missile Predator</div>
+                                    <div className="bg-green-900/20 border border-green-500/30 rounded p-3 text-center">✅ Système IEM</div>
+                                </div>
+                            </div>
+
+                            {/* Séries interdites */}
+                            <div>
+                                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-3">
+                                    <h3 className="text-lg font-semibold text-red-400 mb-2">❌ Séries de points INTERDITES</h3>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Drone</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Drone amélioré</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Drone de brouillage</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Colis stratégique</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Tourelle manuelle</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Tourelle SAM</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Hélicoptère furtif</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Choc de VdR</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Hawk X3</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Essaim</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Coup de tonnerre</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Laser Orbital</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Tourelle</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Hélicoptère d&apos;attaque</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Napalm</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Frappe à dispersion</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ MQ-27 Dragonfire</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ XS1 Goliath</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Wheelson</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Gardien</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Flamenaut</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ ADAV</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Avion d&apos;assaut</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ RC-XD</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ S.R.A.</div>
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ Largage aérien d&apos;urgence</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -385,6 +571,9 @@ export default function ReglesMP() {
                                 <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ ALICE ANGE DE LA MORT - TRANCHÉE</div>
                                 <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ ALICE ANGE DE LA MORT - JENUE FILLE AU VOILE</div>
                                 <div className="bg-red-900/20 border border-red-500/30 rounded p-2 text-sm text-center">❌ FLORENCE - TERREUR NOCTURNE</div>
+                            </div>
+                            <div className="mt-4 bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                                <p className="text-red-400 font-semibold text-center">❌ TOUS LES PERSONNAGES DE LA SÉRIE GUNDAM SONT INTERDITS</p>
                             </div>
                         </div>
                     </div>
