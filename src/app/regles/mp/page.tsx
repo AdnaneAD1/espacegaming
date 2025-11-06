@@ -578,13 +578,85 @@ export default function ReglesMP() {
                         </div>
                     </div>
 
-                    {/* Section 12 - Composition d'une équipe */}
+                    {/* Section 12 - Restrictions de contenu nouveau */}
+                    <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center">
+                                <AlertCircle className="w-6 h-6 text-white" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-white">12. Restrictions de contenu nouveau 📅</h2>
+                        </div>
+                        <div className="text-gray-300 space-y-4">
+                            {/* Règle des 21 jours */}
+                            <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-orange-400 mb-3">⏰ RÈGLE DES 21 JOURS</h3>
+                                <p className="mb-3">
+                                    Tout contenu fonctionnel nouvellement ajouté au jeu est considéré comme <strong className="text-orange-400">RESTREINT</strong> jusqu&apos;à exactement <strong className="text-white">3 semaines (21 jours)</strong> après sa disponibilité dans le jeu pour tous les joueurs au niveau international.
+                                </p>
+                                <div className="bg-gray-700/50 rounded-lg p-3 mb-3">
+                                    <p className="text-sm font-semibold text-white mb-2">📦 Contenu concerné :</p>
+                                    <ul className="text-sm space-y-1 ml-4">
+                                        <li>• Armes</li>
+                                        <li>• Talents d&apos;agent</li>
+                                        <li>• Atouts</li>
+                                        <li>• Utilitaires</li>
+                                        <li>• Séries de points</li>
+                                        <li>• Accessoires d&apos;arme</li>
+                                    </ul>
+                                </div>
+                                <p className="text-sm">
+                                    Après cette période de 3 semaines, le contenu sera considéré comme <strong className="text-green-400">non restreint</strong>, sauf s&apos;il a été ajouté à la liste des restrictions.
+                                </p>
+                            </div>
+
+                            {/* Notes importantes */}
+                            <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-yellow-400 mb-3">📌 NOTES IMPORTANTES</h3>
+                                <ul className="space-y-2 text-sm">
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-yellow-400 mt-1">•</span>
+                                        <span>Cette règle de 3 semaines est appliquée à la <strong className="text-white">discrétion de l&apos;administration du tournoi</strong>.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-yellow-400 mt-1">•</span>
+                                        <span>L&apos;administration peut <strong className="text-white">restreindre ou dé-restreindre</strong> du contenu plus tôt ou plus tard que cette période de 3 semaines.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-yellow-400 mt-1">•</span>
+                                        <span>Les joueurs doivent <strong className="text-white">demander à l&apos;administration</strong> au sujet de tout contenu fonctionnel dont ils ne sont pas sûrs avant de l&apos;utiliser.</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            {/* Avertissement */}
+                            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-red-400 mb-2">⚠️ IMPORTANT</h3>
+                                        <p className="text-sm">
+                                            Le non-respect de cette règle peut entraîner la <strong className="text-red-400">perte de la partie</strong>, du <strong className="text-red-400">match</strong> et/ou la <strong className="text-red-400">disqualification du tournoi</strong>.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Recommandation */}
+                            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                                <p className="text-blue-300 text-sm text-center">
+                                    💡 <strong>Recommandation :</strong> En cas de doute sur un contenu, contactez toujours l&apos;administration avant le match pour éviter toute pénalité.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 13 - Composition d'une équipe */}
                     <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-blue-700">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
                                 <Users className="w-6 h-6 text-white" />
                             </div>
-                            <h2 className="text-2xl font-bold text-white">12. Composition d&apos;une équipe ✅</h2>
+                            <h2 className="text-2xl font-bold text-white">13. Composition d&apos;une équipe ✅</h2>
                         </div>
                         <div className="text-gray-300 space-y-4">
                             <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
@@ -620,13 +692,13 @@ export default function ReglesMP() {
                         </div>
                     </div>
 
-                    {/* Section 13 - Emplacement scrim */}
+                    {/* Section 14 - Emplacement scrim */}
                     <div className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-blue-700">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
                                 <Shield className="w-6 h-6 text-white" />
                             </div>
-                            <h2 className="text-2xl font-bold text-white">13. Emplacement définitif pour vos équipements scrim 📋</h2>
+                            <h2 className="text-2xl font-bold text-white">14. Emplacement définitif pour vos équipements scrim 📋</h2>
                         </div>
                         <div className="text-gray-300">
                             <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
