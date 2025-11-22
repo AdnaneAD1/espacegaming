@@ -7,9 +7,10 @@ import { KillLeaderboardService } from '@/services/killLeaderboardService';
 import { GameModeUtils } from '@/types/game-modes';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Swords, Trophy, Clock, CheckCircle, Play, Loader2, Target, GitBranch, X, Crown, Flame, Zap, TrendingUp, Medal } from 'lucide-react';
+import { Swords, Trophy, Clock, CheckCircle, Play, Loader2, Target, GitBranch, X, Crown, Flame, Zap, TrendingUp, Medal, Users } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import EliminationBracketTree from '@/components/tournament/EliminationBracketTree';
+import WildcardsModal from '@/components/tournament/WildcardsModal';
 
 interface MatchManagementProps {
   tournamentId: string;
@@ -51,6 +52,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
     points: number;
   }[]>([]);
   const [showBracket, setShowBracket] = useState(false);
+  const [showWildcardsModal, setShowWildcardsModal] = useState(false);
 
   // Charger les matchs et les équipes
   const loadData = useCallback(async () => {
@@ -350,7 +352,21 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
 
       // Vérifier si le tour est terminé et générer le suivant
       // (sauf si c'est la finale ou la petite finale)
-      if (selectedMatch.round) {
+      if (selectedMatch.phaseType === 'play_in') {
+        // Vérifier si tous les matchs play-in sont terminés
+        const allPlayInMatches = await MatchService.getMatchesByPhaseType(tournamentId, 'play_in');
+        const allPlayInCompleted = allPlayInMatches.every(m => m.status === 'completed');
+        
+        if (allPlayInCompleted) {
+          console.log('✅ Tous les matchs play-in sont terminés. Génération de l\'élimination...');
+          alert('Tous les matchs play-in sont terminés. L\'élimination va être générée automatiquement.');
+          
+          // Générer l'élimination après le play-in
+          await MatchService.generateEliminationAfterPlayIn(tournamentId, tournament.gameMode);
+          toast.success('Élimination générée avec succès après le play-in !');
+          await loadData(); // Recharger pour afficher les nouveaux matchs
+        }
+      } else if (selectedMatch.round) {
         const isCompleted = await MatchService.isRoundCompleted(tournamentId, selectedMatch.round);
         if (isCompleted) {
           // Vérifier si c'est le dernier tour (finale + petite finale)
@@ -441,11 +457,24 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
     }
   };
 
+  // Charger le classement d'un bloc du play-in
+  const loadPlayInBlocStandings = async (blocType: 'A' | 'B') => {
+    try {
+      const standings = await MatchService.getPlayInBlocStandings(tournamentId, blocType);
+      setGroupStandings(standings);
+      setShowGroupStandings(`Bloc ${blocType}`);
+    } catch (error) {
+      console.error('Erreur lors du chargement du classement:', error);
+      toast.error('Erreur lors du chargement du classement');
+    }
+  };
+
   // Grouper les matchs par phase et par groupe/tour
   const groupStageMatches = matches.filter(m => m.phaseType === 'group_stage');
+  const playInMatches = matches.filter(m => m.phaseType === 'play_in');
   const eliminationMatches = matches.filter(m => m.phaseType === 'elimination');
 
-  console.log('Filtrage matchs - Total:', matches.length, 'Groupes:', groupStageMatches.length, 'Élimination:', eliminationMatches.length);
+  console.log('Filtrage matchs - Total:', matches.length, 'Groupes:', groupStageMatches.length, 'Play-in:', playInMatches.length, 'Élimination:', eliminationMatches.length);
 
   // Grouper les matchs de groupe par nom de groupe
   const matchesByGroup = groupStageMatches.reduce((acc, match) => {
@@ -661,7 +690,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Affichage de la phase d'élimination EN PREMIER (ordre chronologique inverse) */}
+          {/* Affichage de la phase d'élimination EN PREMIER */}
           {eliminationMatches.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -836,7 +865,156 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
             </div>
           )}
 
-          {/* Affichage des groupes EN SECOND (après l'élimination) */}
+          {/* Affichage du Play-In (après l'élimination) */}
+          {playInMatches.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <Zap className="w-6 h-6 text-orange-500" />
+                  Play-In Tournament
+                </h2>
+              </div>
+              
+              {/* Bloc A - Matchs simples */}
+              {playInMatches.filter(m => m.blocType === 'A').length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-orange-200 p-6">
+                  <h3 className="text-lg font-bold text-orange-900 mb-4 flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-orange-500" />
+                    Bloc A - Matchs Simples
+                  </h3>
+                  <div className="space-y-3">
+                    {playInMatches.filter(m => m.blocType === 'A').map(match => (
+                      <div key={match.id} className={`border-2 rounded-lg p-4 transition-all ${
+                        match.status === 'completed' ? 'border-green-300 bg-green-50' :
+                        match.status === 'in_progress' ? 'border-blue-300 bg-blue-50' :
+                        'border-orange-200 bg-orange-50'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-500">Match {match.matchNumber}</span>
+                          {match.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                          {match.status === 'in_progress' && <Clock className="w-4 h-4 text-blue-600 animate-pulse" />}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="mt-2 space-y-1">
+                              <div className={`flex items-center justify-between ${match.winnerId === match.team1Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
+                                <div className="flex items-center gap-2">
+                                  {match.winnerId === match.team1Id && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                  {match.team1Name}
+                                </div>
+                              </div>
+                              <div className="text-gray-400 text-sm">VS</div>
+                              <div className={`flex items-center justify-between ${match.winnerId === match.team2Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
+                                <div className="flex items-center gap-2">
+                                  {match.winnerId === match.team2Id && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                  {match.team2Name}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {(match.status === 'pending' || match.status === 'in_progress') && (
+                            <button
+                              onClick={() => handleOpenResultModal(match)}
+                              className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ml-4 whitespace-nowrap text-sm"
+                            >
+                              <Target className="w-4 h-4" />
+                              {match.status === 'in_progress' ? 'Continuer' : 'Résultat'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Bloc B - Poule */}
+              {playInMatches.filter(m => m.blocType === 'B').length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-orange-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-orange-900 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-orange-500" />
+                      Bloc B - Poule Round-Robin
+                    </h3>
+                    <button
+                      onClick={() => loadPlayInBlocStandings('B')}
+                      className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                    >
+                      <Trophy className="w-4 h-4" />
+                      Classement
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {playInMatches.filter(m => m.blocType === 'B').map(match => (
+                      <div key={match.id} className={`border-2 rounded-lg p-4 transition-all ${
+                        match.status === 'completed' ? 'border-green-300 bg-green-50' :
+                        match.status === 'in_progress' ? 'border-blue-300 bg-blue-50' :
+                        'border-orange-200 bg-orange-50'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-500">Match {match.matchNumber}</span>
+                          {match.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                          {match.status === 'in_progress' && <Clock className="w-4 h-4 text-blue-600 animate-pulse" />}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="mt-2 space-y-1">
+                              <div className={`flex items-center justify-between ${match.winnerId === match.team1Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
+                                <div className="flex items-center gap-2">
+                                  {match.winnerId === match.team1Id && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                  {match.team1Name}
+                                </div>
+                              </div>
+                              <div className="text-gray-400 text-sm">VS</div>
+                              <div className={`flex items-center justify-between ${match.winnerId === match.team2Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
+                                <div className="flex items-center gap-2">
+                                  {match.winnerId === match.team2Id && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                  {match.team2Name}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {(match.status === 'pending' || match.status === 'in_progress') && (
+                            <button
+                              onClick={() => handleOpenResultModal(match)}
+                              className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ml-4 whitespace-nowrap text-sm"
+                            >
+                              <Target className="w-4 h-4" />
+                              {match.status === 'in_progress' ? 'Continuer' : 'Résultat'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bouton pour afficher les wildcards si play-in */}
+              <div className="flex justify-end">
+                {(() => {
+                  const playInCompleted = playInMatches.every(m => m.status === 'completed');
+                  return (
+                    <button
+                      onClick={() => setShowWildcardsModal(true)}
+                      disabled={!playInCompleted}
+                      title={!playInCompleted ? 'Terminez tous les matchs du play-in pour voir le classement des wildcards' : ''}
+                      className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                        playInCompleted
+                          ? 'bg-orange-600 hover:bg-orange-700 text-white cursor-pointer'
+                          : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      <Users className="w-5 h-5" />
+                      Classement Wildcards
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Affichage des groupes EN DERNIER (après l'élimination et le play-in) */}
           {hasGroupStage && (
             <div className="space-y-4">
               <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -1370,6 +1548,13 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
           </div>
         </div>
       )}
+
+      {/* Modal Wildcards */}
+      <WildcardsModal
+        isOpen={showWildcardsModal}
+        onClose={() => setShowWildcardsModal(false)}
+        tournamentId={tournamentId}
+      />
     </div>
   );
 }

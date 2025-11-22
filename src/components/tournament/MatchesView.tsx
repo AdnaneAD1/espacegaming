@@ -10,8 +10,9 @@ interface MatchData {
     team2Name: string;
     winnerId?: string;
     status: 'pending' | 'in_progress' | 'completed';
-    phaseType?: 'group_stage' | 'elimination';
+    phaseType?: 'group_stage' | 'play_in' | 'elimination';
     groupName?: string;
+    blocType?: 'A' | 'B';
     round?: number;
     matchNumber: number;
     isThirdPlaceMatch?: boolean;
@@ -54,7 +55,7 @@ export default function MatchesView({ matches }: MatchesViewProps) {
     
     // Grouper les matchs par phase et groupe/round
     const groupedMatches: Record<string, MatchData[]> = {};
-    const groupKeys: Record<string, { type: 'group' | 'elimination', order: number, subOrder: number }> = {};
+    const groupKeys: Record<string, { type: 'group' | 'play_in' | 'elimination', order: number, subOrder: number }> = {};
     
     matches.forEach(match => {
         let key = 'Autres';
@@ -62,6 +63,12 @@ export default function MatchesView({ matches }: MatchesViewProps) {
         if (match.phaseType === 'group_stage' && match.groupName) {
             key = `Phase de Groupes - ${match.groupName}`;
             groupKeys[key] = { type: 'group', order: 0, subOrder: 0 };
+        } else if (match.phaseType === 'play_in') {
+            // Distinguer Bloc A et Bloc B
+            const blocName = match.blocType === 'B' ? 'Bloc B - Poule' : 'Bloc A - Matchs Simples';
+            key = `Play-In - ${blocName}`;
+            // order: 1 pour play-in (après groupes), subOrder: 0 pour Bloc A, 1 pour Bloc B
+            groupKeys[key] = { type: 'play_in', order: 1, subOrder: match.blocType === 'B' ? 1 : 0 };
         } else if (match.phaseType === 'elimination' && match.round) {
             // Différencier la petite finale de la finale
             const roundName = match.isThirdPlaceMatch ? 'Petite Finale (3ème place)' : getRoundName(match.round);
@@ -82,28 +89,31 @@ export default function MatchesView({ matches }: MatchesViewProps) {
         groupedMatches[key].sort((a, b) => a.matchNumber - b.matchNumber);
     });
     
-    // Trier les clés : d'abord les groupes (alphabétique), puis les phases éliminatoires (par round puis subOrder)
+    // Trier les clés : groupes → play-in → élimination
     const sortedKeys = Object.keys(groupedMatches).sort((a, b) => {
         const keyA = groupKeys[a];
         const keyB = groupKeys[b];
         
-        // Si les deux sont des groupes, tri alphabétique
-        if (keyA.type === 'group' && keyB.type === 'group') {
-            return a.localeCompare(b);
+        // Ordre de priorité : group (0) → play_in (1) → elimination (2+)
+        const typeOrder = { 'group': 0, 'play_in': 1, 'elimination': 2 };
+        const orderA = typeOrder[keyA.type] || 999;
+        const orderB = typeOrder[keyB.type] || 999;
+        
+        if (orderA !== orderB) {
+            return orderA - orderB;
         }
         
-        // Si les deux sont des phases éliminatoires, tri par numéro de round puis subOrder
-        if (keyA.type === 'elimination' && keyB.type === 'elimination') {
-            // D'abord par round
-            if (keyA.order !== keyB.order) {
-                return keyA.order - keyB.order;
-            }
-            // Puis par subOrder (finale avant petite finale)
+        // Si même type, tri par order puis subOrder
+        if (keyA.order !== keyB.order) {
+            return keyA.order - keyB.order;
+        }
+        
+        if (keyA.subOrder !== keyB.subOrder) {
             return keyA.subOrder - keyB.subOrder;
         }
         
-        // Les groupes avant les phases éliminatoires
-        return keyA.type === 'group' ? -1 : 1;
+        // Dernier recours : tri alphabétique
+        return a.localeCompare(b);
     });
     
     const getStatusBadge = (status: string) => {
@@ -147,19 +157,24 @@ export default function MatchesView({ matches }: MatchesViewProps) {
             {sortedKeys.map((groupName) => {
                 const groupMatches = groupedMatches[groupName];
                 const isThirdPlace = groupName.includes('Petite Finale');
+                const isPlayIn = groupName.includes('Play-In');
                 
                 return (
                 <div key={groupName} className={`bg-gray-800/60 backdrop-blur-lg rounded-2xl overflow-hidden ${
-                    isThirdPlace ? 'border-2 border-orange-500' : 'border border-gray-700'
+                    isThirdPlace ? 'border-2 border-orange-500' : 
+                    isPlayIn ? 'border-2 border-orange-500' :
+                    'border border-gray-700'
                 }`}>
                     <div className={`px-6 py-4 ${
                         isThirdPlace 
                             ? 'bg-gradient-to-r from-orange-600 to-amber-600' 
+                            : isPlayIn
+                            ? 'bg-gradient-to-r from-orange-600 to-amber-600'
                             : 'bg-gradient-to-r from-indigo-600 to-purple-600'
                     }`}>
                         <h3 className="text-xl font-bold text-white">{groupName}</h3>
                         <p className={`text-sm mt-1 ${
-                            isThirdPlace ? 'text-orange-100' : 'text-indigo-100'
+                            isThirdPlace || isPlayIn ? 'text-orange-100' : 'text-indigo-100'
                         }`}>{groupMatches.length} match(s)</p>
                     </div>
                     

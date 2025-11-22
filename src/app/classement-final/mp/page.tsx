@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trophy, Grid3x3, List, Clock, Target } from 'lucide-react';
+import { Trophy, Grid3x3, List, Clock, Target, Users } from 'lucide-react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -16,6 +16,7 @@ import KillLeaderboardView from '@/components/tournament/KillLeaderboardView';
 import Podium from '@/components/tournament/Podium';
 import { KillLeaderboardService } from '@/services/killLeaderboardService';
 import { TournamentKillLeaderboard } from '@/types/tournament-multi';
+import WildcardsModal from '@/components/tournament/WildcardsModal';
 
 interface MPTeam {
     id: string;
@@ -37,8 +38,9 @@ interface MatchData {
     team2Name: string;
     winnerId?: string;
     status: 'pending' | 'in_progress' | 'completed';
-    phaseType?: 'group_stage' | 'elimination';
+    phaseType?: 'group_stage' | 'play_in' | 'elimination';
     groupName?: string;
+    blocType?: 'A' | 'B';
     round?: number;
     matchNumber: number;
 }
@@ -55,6 +57,7 @@ export default function ClassementFinalMP() {
     const [killLeaderboard, setKillLeaderboard] = useState<TournamentKillLeaderboard | null>(null);
     const [playersPerTeam, setPlayersPerTeam] = useState<number>(5);
     const [isTournamentComplete, setIsTournamentComplete] = useState(false);
+    const [showWildcardsModal, setShowWildcardsModal] = useState(false);
 
     // Charger le tournoi MP actif et vérifier la disponibilité des résultats
     useEffect(() => {
@@ -396,8 +399,8 @@ export default function ClassementFinalMP() {
                     </p>
                 </div>
 
-                {/* Onglets */}
-                <div className="flex justify-center mb-8">
+                {/* Onglets et bouton wildcards */}
+                <div className="flex flex-col items-center gap-4 mb-8">
                     <div className="bg-gray-800/60 backdrop-blur-lg rounded-lg p-1 border border-gray-700 inline-flex">
                         <button
                             onClick={() => setActiveTab('phases')}
@@ -433,6 +436,29 @@ export default function ClassementFinalMP() {
                             Kill Leaderboard
                         </button>
                     </div>
+                    
+                    {/* Bouton Wildcards si play-in */}
+                    {matches.some(m => m.phaseType === 'play_in') && (
+                        (() => {
+                            const playInMatches = matches.filter(m => m.phaseType === 'play_in');
+                            const playInCompleted = playInMatches.every(m => m.status === 'completed');
+                            return (
+                                <button
+                                    onClick={() => setShowWildcardsModal(true)}
+                                    disabled={!playInCompleted}
+                                    title={!playInCompleted ? 'Terminez tous les matchs du play-in pour voir le classement des wildcards' : ''}
+                                    className={`px-6 py-2 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                        playInCompleted
+                                            ? 'bg-orange-600 hover:bg-orange-700 text-white cursor-pointer'
+                                            : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60'
+                                    }`}
+                                >
+                                    <Users className="w-5 h-5" />
+                                    Classement Wildcards
+                                </button>
+                            );
+                        })()
+                    )}
                 </div>
 
                 {loading ? (
@@ -471,6 +497,15 @@ export default function ClassementFinalMP() {
                     </div>
                 )}
             </div>
+
+            {/* Modal Wildcards */}
+            {activeTournament && (
+                <WildcardsModal
+                    isOpen={showWildcardsModal}
+                    onClose={() => setShowWildcardsModal(false)}
+                    tournamentId={activeTournament.id}
+                />
+            )}
 
             <Footer />
         </div>

@@ -21,7 +21,8 @@ interface MatchData {
     winnerId?: string;
     loserId?: string;
     status: 'pending' | 'in_progress' | 'completed';
-    phaseType?: 'group_stage' | 'elimination';
+    phaseType?: 'group_stage' | 'play_in' | 'elimination';
+    blocType?: 'A' | 'B';
     round?: number;
     isThirdPlaceMatch?: boolean;
 }

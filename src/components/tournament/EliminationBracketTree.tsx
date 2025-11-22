@@ -10,8 +10,9 @@ interface MatchData {
     team2Name: string;
     winnerId?: string;
     status: 'pending' | 'in_progress' | 'completed';
-    phaseType?: 'group_stage' | 'elimination' | 'round_robin';
+    phaseType?: 'group_stage' | 'play_in' | 'elimination' | 'round_robin';
     groupName?: string;
+    blocType?: 'A' | 'B';
     round?: number;
     matchNumber: number;
     isThirdPlaceMatch?: boolean;

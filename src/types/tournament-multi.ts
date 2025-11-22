@@ -225,11 +225,48 @@ export interface TournamentKillLeaderboard {
 export interface TournamentPhase {
   id: string;
   tournamentId: string;
-  phaseType: 'group_stage' | 'elimination';
-  phaseNumber: number; // 1 = phase de groupes, 2 = élimination, etc.
+  phaseType: 'group_stage' | 'play_in' | 'elimination';
+  phaseNumber: number; // 1 = phase de groupes, 1.5 = play-in, 2 = élimination, etc.
   status: 'pending' | 'active' | 'completed';
   startDate?: Date;
   endDate?: Date;
+}
+
+// Configuration du Play-In
+export interface PlayInConfig {
+  enabled: boolean;
+  totalTeams: number;
+  targetBracketSize: number;
+  blocATeams: number;
+  blocBTeams: number;
+  qualifiersFromBlocA: number;
+  qualifiersFromBlocB: number;
+  directQualifiers: number;
+  wildcardsNeeded: number;
+}
+
+// Statistiques d'équipe dans le Play-In
+export interface PlayInTeamStats {
+  teamId: string;
+  teamName: string;
+  blocType: 'A' | 'B';
+  wins: number;
+  losses: number;
+  roundsWon: number;
+  roundsLost: number;
+  roundDifference: number;
+  totalKills: number;
+  points: number;
+  position?: number;
+  qualified: boolean;
+  isWildcard: boolean;
+}
+
+// Résultat du Play-In
+export interface PlayInResult {
+  qualifiedTeams: PlayInTeamStats[];
+  wildcardTeams: PlayInTeamStats[];
+  totalQualified: number;
 }
 
 // Groupe pour la phase de groupes
@@ -256,10 +293,11 @@ export interface TournamentMatch {
   id: string;
   tournamentId: string;
   gameMode: GameMode;
-  phaseType: 'group_stage' | 'elimination' | 'round_robin'; // Type de phase
+  phaseType: 'group_stage' | 'play_in' | 'elimination' | 'round_robin'; // Type de phase
   round?: number; // Pour élimination: 1 = premier tour, 2 = quarts, 3 = demis, 4 = finale
   matchNumber: number; // Numéro du match
   groupName?: string; // Pour phase de groupes: "Groupe A", "Groupe B", etc.
+  blocType?: 'A' | 'B'; // Pour play-in: Bloc A (matchs simples) ou Bloc B (poule)
   isThirdPlaceMatch?: boolean; // Pour la petite finale (3ème place)
   
   // Équipes
