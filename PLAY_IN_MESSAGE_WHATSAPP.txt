@@ -1,0 +1,102 @@
+🎮 EXPLICATION DU SYSTÈME DE PLAY-IN AVEC 12 ÉQUIPES
+
+📊 CONTEXTE
+Un tournoi en élimination directe nécessite 8, 16, 32... équipes (puissance de 2).
+Avec 12 équipes → Play-In obligatoire pour réduire à 8 équipes.
+
+🎯 STRUCTURE DU PLAY-IN (12 → 8 équipes)
+
+Total équipes : 12
+Cible : 8 équipes (puissance de 2)
+À éliminer : 4 équipes
+
+Distribution :
+• Bloc A : 10 équipes (matchs simples 1 vs 1)
+• Bloc B : 2 équipes (poule round-robin)
+
+⚔️ LES MATCHS DU PLAY-IN
+
+BLOC A (10 équipes → 5 matchs)
+Match 1 : Équipe 1 vs Équipe 2
+Match 2 : Équipe 3 vs Équipe 4
+Match 3 : Équipe 5 vs Équipe 6
+Match 4 : Équipe 7 vs Équipe 8
+Match 5 : Équipe 9 vs Équipe 10
+
+Résultat : 5 gagnants ✅ + 5 perdants
+
+BLOC B (2 équipes → 1 match)
+Match 1 : Équipe 11 vs Équipe 12
+
+Résultat : 1 gagnant ✅ + 1 perdant
+
+TOTAL : 6 matchs Play-In
+
+🏆 QUALIFIÉS POUR L'ÉLIMINATION (8 équipes)
+
+QUALIFIÉS DIRECTS (6 équipes)
+✅ 5 gagnants du Bloc A
+✅ 1 gagnant du Bloc B
+
+WILDCARDS (2 équipes)
+Les 2 meilleures équipes parmi les 6 perdants, sélectionnées par :
+
+1️⃣ KILLS TOTAUX (le plus important)
+→ Nombre total de kills dans tous les matchs
+
+2️⃣ VICTOIRES
+→ Nombre de rounds gagnés
+
+3️⃣ DIFFÉRENCE DE ROUNDS
+→ Rounds gagnés - Rounds perdus
+
+4️⃣ TIRAGE AU SORT
+→ Si tout est égal
+
+EXEMPLE DE SÉLECTION
+
+Candidats aux wildcards (6 perdants) :
+1. Équipe A : 48 kills, 9 rounds gagnés, +3 différence
+2. Équipe B : 45 kills, 8 rounds gagnés, +2 différence
+3. Équipe C : 40 kills, 7 rounds gagnés, +1 différence
+4. Équipe D : 35 kills, 6 rounds gagnés, 0 différence
+5. Équipe E : 30 kills, 5 rounds gagnés, -1 différence
+6. Équipe F : 25 kills, 3 rounds gagnés, -2 différence
+
+Sélection :
+🥇 Wildcard 1 : Équipe A (48 kills - meilleure)
+🥈 Wildcard 2 : Équipe B (45 kills - 2e meilleure)
+
+❌ Éliminées : Équipes C, D, E, F
+
+📈 RÉSUMÉ FINAL
+
+ÉLIMINATION DIRECTE (8 équipes)
+├─ 5 gagnants Bloc A
+├─ 1 gagnant Bloc B
+├─ 1 wildcard (meilleur perdant)
+└─ 1 wildcard (2e meilleur perdant)
+
+→ Ces 8 équipes jouent les demi-finales
+→ Les 4 gagnants jouent les finales
+→ Le gagnant est champion 🏆
+
+❓ QUESTIONS FRÉQUENTES
+
+Q: Pourquoi Bloc A a 10 équipes et Bloc B a 2 ?
+R: Bloc A a besoin d'un nombre PAIR (matchs 1 vs 1). Avec 12 équipes, 10 + 2 = 12 et 10 est pair ✅
+
+Q: Comment sont choisies les équipes pour chaque bloc ?
+R: Tirage au sort aléatoire ! Les 10 premières au Bloc A, les 2 dernières au Bloc B.
+
+Q: Pourquoi les wildcards sont basés sur les kills ?
+R: Les kills reflètent la vraie performance. Une équipe avec beaucoup de kills a dominé.
+
+Q: Les wildcards sont-ils désavantagés ?
+R: Non ! Une fois en élimination, tous les matchs sont au même niveau.
+
+🎯 EN RÉSUMÉ
+
+6 matchs Play-In → 6 qualifiés directs + 2 wildcards → 8 équipes pour l'élimination directe
+
+Bonne chance à tous ! 🏆

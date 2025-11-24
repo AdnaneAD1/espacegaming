@@ -407,139 +407,127 @@ export class MatchService {
     gameMode: GameMode,
     currentRound: number
   ): Promise<void> {
-    // Récupérer les gagnants et perdants du tour actuel
-    const matchesQuery = query(
-      collection(db, `tournaments/${tournamentId}/matches`),
-      where('round', '==', currentRound),
-      where('status', '==', 'completed'),
-      orderBy('matchNumber')
-    );
-    
-    const matchesSnapshot = await getDocs(matchesQuery);
-    const winners: { winnerId: string; winnerName: string }[] = [];
-    const losers: { loserId: string; loserName: string }[] = [];
-    
-    let hasFinale = false;
-    let hasThirdPlace = false;
-    
-    matchesSnapshot.docs.forEach(doc => {
-      const match = doc.data() as TournamentMatch;
+    try {
+      // Récupérer les gagnants et perdants du tour actuel
+      const matchesQuery = query(
+        collection(db, `tournaments/${tournamentId}/matches`),
+        where('round', '==', currentRound),
+        where('status', '==', 'completed'),
+        orderBy('matchNumber')
+      );
       
-      // Identifier si c'est la finale ou la petite finale
-      if (match.isThirdPlaceMatch) {
-        hasThirdPlace = true;
-      } else {
-        hasFinale = true;
-      }
+      const matchesSnapshot = await getDocs(matchesQuery);
+      const winners: { winnerId: string; winnerName: string }[] = [];
+      const losers: { loserId: string; loserName: string }[] = [];
       
-      if (match.winnerId && match.winnerName) {
-        winners.push({ winnerId: match.winnerId, winnerName: match.winnerName });
-      }
-      if (match.loserId && match.loserName) {
-        losers.push({ loserId: match.loserId, loserName: match.loserName });
-      }
-    });
-    
-    // Si on a exactement 1 gagnant et que c'est la finale ET la petite finale qui sont terminées
-    if (winners.length === 1 && hasFinale && hasThirdPlace) {
-      console.log('🏆 La finale et la petite finale sont terminées. Pas de tour suivant à générer.');
-      return;
-    }
-    
-    // Si on a 1 gagnant mais qu'il manque encore un match (finale ou petite finale)
-    if (winners.length === 1) {
-      console.log('⏳ Un match final est terminé, mais il reste encore un match à jouer.');
-      return;
-    }
-    
-    if (winners.length < 2) {
-      console.log('Pas assez de gagnants pour créer le tour suivant');
-      return;
-    }
-    
-    const batch = writeBatch(db);
-    const matchesRef = collection(db, `tournaments/${tournamentId}/matches`);
-    
-    // Si on a exactement 2 gagnants (demi-finales), créer la finale ET la petite finale
-    if (winners.length === 2 && losers.length === 2) {
-      console.log('🏆 Création de la finale et de la petite finale (3ème place)');
-      
-      // 1. Créer la finale (gagnants des demi)
-      const finaleData: Omit<TournamentMatch, 'id'> = {
-        tournamentId,
-        gameMode,
-        phaseType: 'elimination',
-        round: currentRound + 1,
-        matchNumber: 1,
-        team1Id: winners[0].winnerId,
-        team1Name: winners[0].winnerName,
-        team2Id: winners[1].winnerId,
-        team2Name: winners[1].winnerName,
-        status: 'pending',
-        createdAt: new Date()
-      };
-      
-      const finaleRef = doc(matchesRef);
-      batch.set(finaleRef, {
-        ...finaleData,
-        createdAt: serverTimestamp()
-      });
-      
-      // 2. Créer la petite finale (perdants des demi)
-      const thirdPlaceData: Omit<TournamentMatch, 'id'> = {
-        tournamentId,
-        gameMode,
-        phaseType: 'elimination',
-        round: currentRound + 1,
-        matchNumber: 2,
-        team1Id: losers[0].loserId,
-        team1Name: losers[0].loserName,
-        team2Id: losers[1].loserId,
-        team2Name: losers[1].loserName,
-        status: 'pending',
-        isThirdPlaceMatch: true, // Marquer comme petite finale
-        createdAt: new Date()
-      };
-      
-      const thirdPlaceRef = doc(matchesRef);
-      batch.set(thirdPlaceRef, {
-        ...thirdPlaceData,
-        createdAt: serverTimestamp()
-      });
-      
-      await batch.commit();
-      console.log('✅ Finale et petite finale créées');
-    } else {
-      // Créer les matchs normaux du tour suivant
-      const numMatches = Math.floor(winners.length / 2);
-      
-      for (let i = 0; i < numMatches; i++) {
-        const team1 = winners[i * 2];
-        const team2 = winners[i * 2 + 1];
+      matchesSnapshot.docs.forEach(doc => {
+        const match = doc.data() as TournamentMatch;
         
-        const matchData: Omit<TournamentMatch, 'id'> = {
+        if (match.winnerId && match.winnerName) {
+          winners.push({ winnerId: match.winnerId, winnerName: match.winnerName });
+        }
+        if (match.loserId && match.loserName) {
+          losers.push({ loserId: match.loserId, loserName: match.loserName });
+        }
+      });
+      
+      console.log(`📊 Round ${currentRound} complété: ${winners.length} gagnants, ${losers.length} perdants`);
+      
+      if (winners.length < 2) {
+        console.log('⏳ Pas assez de gagnants pour créer le tour suivant');
+        return;
+      }
+      
+      const batch = writeBatch(db);
+      const matchesRef = collection(db, `tournaments/${tournamentId}/matches`);
+      
+      // Cas 1 : Exactement 2 gagnants = Demi-finales complétées → Créer Finale + Petite finale
+      if (winners.length === 2 && losers.length === 2) {
+        console.log('🏆 Demi-finales complétées → Création de la Finale et Petite finale');
+        
+        // 1. Créer la FINALE (gagnants des demis)
+        const finaleData: Omit<TournamentMatch, 'id'> = {
           tournamentId,
           gameMode,
           phaseType: 'elimination',
           round: currentRound + 1,
-          matchNumber: i + 1,
-          team1Id: team1.winnerId,
-          team1Name: team1.winnerName,
-          team2Id: team2.winnerId,
-          team2Name: team2.winnerName,
+          matchNumber: 1,
+          team1Id: winners[0].winnerId,
+          team1Name: winners[0].winnerName,
+          team2Id: winners[1].winnerId,
+          team2Name: winners[1].winnerName,
           status: 'pending',
           createdAt: new Date()
         };
         
-        const newMatchRef = doc(matchesRef);
-        batch.set(newMatchRef, {
-          ...matchData,
+        const finaleRef = doc(matchesRef);
+        batch.set(finaleRef, {
+          ...finaleData,
           createdAt: serverTimestamp()
         });
+        
+        // 2. Créer la PETITE FINALE (perdants des demis)
+        const thirdPlaceData: Omit<TournamentMatch, 'id'> = {
+          tournamentId,
+          gameMode,
+          phaseType: 'elimination',
+          round: currentRound + 1,
+          matchNumber: 2,
+          team1Id: losers[0].loserId,
+          team1Name: losers[0].loserName,
+          team2Id: losers[1].loserId,
+          team2Name: losers[1].loserName,
+          status: 'pending',
+          isThirdPlaceMatch: true,
+          createdAt: new Date()
+        };
+        
+        const thirdPlaceRef = doc(matchesRef);
+        batch.set(thirdPlaceRef, {
+          ...thirdPlaceData,
+          createdAt: serverTimestamp()
+        });
+        
+        await batch.commit();
+        console.log('✅ Finale (Match 1) et Petite finale (Match 2) créées');
+        
+      } else {
+        // Cas 2 : Autres cas (4, 8, 16... gagnants) → Créer les matchs du tour suivant
+        const numMatches = Math.floor(winners.length / 2);
+        console.log(`⚔️ Création de ${numMatches} matchs pour le tour ${currentRound + 1}`);
+        
+        for (let i = 0; i < numMatches; i++) {
+          const team1 = winners[i * 2];
+          const team2 = winners[i * 2 + 1];
+          
+          const matchData: Omit<TournamentMatch, 'id'> = {
+            tournamentId,
+            gameMode,
+            phaseType: 'elimination',
+            round: currentRound + 1,
+            matchNumber: i + 1,
+            team1Id: team1.winnerId,
+            team1Name: team1.winnerName,
+            team2Id: team2.winnerId,
+            team2Name: team2.winnerName,
+            status: 'pending',
+            createdAt: new Date()
+          };
+          
+          const newMatchRef = doc(matchesRef);
+          batch.set(newMatchRef, {
+            ...matchData,
+            createdAt: serverTimestamp()
+          });
+        }
+        
+        await batch.commit();
+        console.log(`✅ ${numMatches} matchs générés pour le tour ${currentRound + 1}`);
       }
       
-      await batch.commit();
-      console.log(`${numMatches} matchs générés pour le tour ${currentRound + 1}`);
+    } catch (error) {
+      console.error('❌ Erreur lors de la génération des matchs du tour suivant:', error);
+      throw error;
     }
   }
 
