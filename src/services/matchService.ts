@@ -408,9 +408,10 @@ export class MatchService {
     currentRound: number
   ): Promise<void> {
     try {
-      // Récupérer les gagnants et perdants du tour actuel
+      // Récupérer les gagnants et perdants du tour actuel (élimination uniquement)
       const matchesQuery = query(
         collection(db, `tournaments/${tournamentId}/matches`),
+        where('phaseType', '==', 'elimination'),
         where('round', '==', currentRound),
         where('status', '==', 'completed'),
         orderBy('matchNumber')
