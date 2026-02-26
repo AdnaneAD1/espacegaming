@@ -25,7 +25,7 @@ function convertTimestampToDate(timestamp: Date | Timestamp | null | undefined):
 }
 
 export class MatchService {
-  
+
   /**
    * Calculer la distribution optimale des groupes
    * Gère les cas où le nombre d'équipes n'est pas une puissance de 2
@@ -74,15 +74,15 @@ export class MatchService {
       case 'elimination_direct':
         await this.generateEliminationMatches(tournamentId, tournament.gameMode, teams);
         break;
-      
+
       case 'groups_then_elimination':
         await this.generateGroupStageMatches(tournamentId, tournament, teams);
         break;
-      
+
       case 'groups_only':
         await this.generateGroupStageMatches(tournamentId, tournament, teams);
         break;
-      
+
       default:
         throw new Error(`Format de tournoi non supporté: ${format}`);
     }
@@ -98,10 +98,10 @@ export class MatchService {
   ): Promise<void> {
     const groupConfig = tournament.customFormat?.groupStage;
     const format = tournament.customFormat?.tournamentFormat || 'elimination_direct';
-    
+
     // Pour groups_only, créer un seul groupe avec toutes les équipes
     const isSingleGroup = format === 'groups_only';
-    
+
     if (!isSingleGroup && (!groupConfig || !groupConfig.enabled)) {
       throw new Error('La configuration des groupes est manquante');
     }
@@ -110,20 +110,20 @@ export class MatchService {
     const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
 
     let groups: TournamentTeam[][] = [];
-    
+
     if (isSingleGroup) {
       // ✅ Un seul groupe avec toutes les équipes (round-robin complet)
       groups = [shuffledTeams];
     } else {
       // Plusieurs groupes selon la configuration
       const teamsPerGroup = groupConfig!.teamsPerGroup || 4;
-      
+
       // Calculer la distribution optimale des groupes
       const distribution = this.calculateGroupDistribution(teams.length, teamsPerGroup);
       const { numGroups } = distribution;
-      
+
       console.log(`📊 Distribution des groupes: ${distribution.description}`);
-      
+
       // Créer les groupes avec les tailles calculées
       for (let i = 0; i < numGroups; i++) {
         groups.push([]);
@@ -175,7 +175,7 @@ export class MatchService {
     }
 
     await batch.commit();
-    
+
     if (isSingleGroup) {
       console.log(`✅ Matchs générés pour 1 groupe unique avec ${teams.length} équipes (round-robin complet)`);
     } else {
@@ -198,39 +198,39 @@ export class MatchService {
 
     // Importer PlayInService pour vérifier si play-in est nécessaire
     const { PlayInService } = await import('./playInService');
-    
+
     // Vérifier si le nombre d'équipes est une puissance de 2
     const structure = PlayInService.calculatePlayInStructure(teams.length);
-    
+
     if (structure.enabled) {
       // Générer le play-in si nécessaire
       console.log(`⚠️ Nombre d'équipes (${teams.length}) n'est pas une puissance de 2`);
       console.log(`📍 Génération du Play-In pour atteindre ${structure.targetBracketSize} équipes`);
-      
+
       const result = await PlayInService.generatePlayIn(tournamentId, gameMode, teams);
       console.log(`✅ Play-in créé: ${result.totalMatches} matchs (${result.blocAMatches} Bloc A + ${result.blocBMatches} Bloc B)`);
       return;
     }
-    
+
     // Sinon, générer l'élimination directe classique
     console.log(`✅ Nombre d'équipes (${teams.length}) = puissance de 2, élimination directe`);
-    
+
     // Mélanger les équipes aléatoirement pour un tirage au sort
     const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
-    
+
     const batch = writeBatch(db);
     const matchesRef = collection(db, `tournaments/${tournamentId}/matches`);
-    
+
     // Créer les matchs du premier tour
     const numMatches = Math.floor(shuffledTeams.length / 2);
-    
+
     // Le premier tour d'élimination est toujours round 1
     const firstRoundNumber = 1;
-    
+
     for (let i = 0; i < numMatches; i++) {
       const team1 = shuffledTeams[i * 2];
       const team2 = shuffledTeams[i * 2 + 1];
-      
+
       const matchData: Omit<TournamentMatch, 'id'> = {
         tournamentId,
         gameMode,
@@ -244,14 +244,14 @@ export class MatchService {
         status: 'pending',
         createdAt: new Date()
       };
-      
+
       const newMatchRef = doc(matchesRef);
       batch.set(newMatchRef, {
         ...matchData,
         createdAt: serverTimestamp()
       });
     }
-    
+
     await batch.commit();
     console.log(`${numMatches} matchs générés pour le tournoi ${tournamentId}`);
   }
@@ -299,18 +299,18 @@ export class MatchService {
   ): Promise<number> {
     // Mélanger les équipes qualifiées
     const shuffledTeams = [...qualifiedTeams].sort(() => Math.random() - 0.5);
-    
+
     const batch = writeBatch(db);
     const matchesRef = collection(db, `tournaments/${tournamentId}/matches`);
-    
+
     // Créer les matchs du premier tour d'élimination
     const numMatches = Math.floor(shuffledTeams.length / 2);
     const firstRoundNumber = 1;
-    
+
     for (let i = 0; i < numMatches; i++) {
       const team1 = shuffledTeams[i * 2];
       const team2 = shuffledTeams[i * 2 + 1];
-      
+
       const matchData: Omit<TournamentMatch, 'id'> = {
         tournamentId,
         gameMode,
@@ -324,14 +324,14 @@ export class MatchService {
         status: 'pending',
         createdAt: new Date()
       };
-      
+
       const newMatchRef = doc(matchesRef);
       batch.set(newMatchRef, {
         ...matchData,
         createdAt: serverTimestamp()
       });
     }
-    
+
     await batch.commit();
     console.log(`✅ ${numMatches} matchs d'élimination créés`);
     return numMatches;
@@ -347,34 +347,34 @@ export class MatchService {
   ): Promise<void> {
     try {
       const { PlayInService } = await import('./playInService');
-      
+
       console.log('🔄 Début de la génération de l\'élimination après play-in...');
-      
+
       // 1. Récupérer les stats du play-in
       console.log('📊 Récupération des stats play-in...');
       const stats = await PlayInService.calculatePlayInStats(tournamentId);
-      
+
       if (stats.length === 0) {
         console.log('❌ Aucune stat play-in trouvée');
         return;
       }
       console.log(`✅ ${stats.length} équipes trouvées au play-in`);
-      
+
       // 2. Calculer la structure
       console.log('🎯 Calcul de la structure...');
       const structure = PlayInService.calculatePlayInStructure(stats.length);
       console.log(`✅ Structure: ${structure.qualifiersFromBlocA} qualifiés Bloc A + ${structure.qualifiersFromBlocB} qualifiés Bloc B + ${structure.wildcardsNeeded} wildcards`);
-      
+
       // 3. Sélectionner les qualifiés et wildcards
       console.log('🏆 Sélection des qualifiés et wildcards...');
       const result = await PlayInService.selectQualifiersAndWildcards(tournamentId, stats, structure);
-      
+
       if (result.totalQualified === 0) {
         console.log('❌ Aucune équipe qualifiée du play-in');
         return;
       }
       console.log(`✅ ${result.totalQualified} équipes qualifiées (${result.qualifiedTeams.length} directs + ${result.wildcardTeams.length} wildcards)`);
-      
+
       // 4. Convertir en TournamentTeam
       console.log('🔄 Conversion des équipes...');
       const allQualifiedTeams = [
@@ -382,17 +382,17 @@ export class MatchService {
         ...result.wildcardTeams
       ].map(team => this.convertPlayInTeamToTournamentTeam(team, tournamentId, gameMode));
       console.log(`✅ ${allQualifiedTeams.length} équipes converties`);
-      
+
       // 5. Créer les matchs d'élimination
       console.log('⚔️ Création des matchs d\'élimination...');
       const numMatches = await this.createEliminationMatches(tournamentId, gameMode, allQualifiedTeams);
-      
+
       console.log(`\n🎉 ÉLIMINATION GÉNÉRÉE AVEC SUCCÈS`);
       console.log(`   - Total matchs: ${numMatches}`);
       console.log(`   - Qualifiés directs: ${result.qualifiedTeams.length}`);
       console.log(`   - Wildcards: ${result.wildcardTeams.length}`);
       console.log(`   - Total équipes: ${result.totalQualified}`);
-      
+
     } catch (error) {
       console.error('❌ Erreur lors de la génération de l\'élimination après play-in:', error);
       throw error;
@@ -416,14 +416,14 @@ export class MatchService {
         where('status', '==', 'completed'),
         orderBy('matchNumber')
       );
-      
+
       const matchesSnapshot = await getDocs(matchesQuery);
       const winners: { winnerId: string; winnerName: string }[] = [];
       const losers: { loserId: string; loserName: string }[] = [];
-      
+
       matchesSnapshot.docs.forEach(doc => {
         const match = doc.data() as TournamentMatch;
-        
+
         if (match.winnerId && match.winnerName) {
           winners.push({ winnerId: match.winnerId, winnerName: match.winnerName });
         }
@@ -431,21 +431,21 @@ export class MatchService {
           losers.push({ loserId: match.loserId, loserName: match.loserName });
         }
       });
-      
+
       console.log(`📊 Round ${currentRound} complété: ${winners.length} gagnants, ${losers.length} perdants`);
-      
+
       if (winners.length < 2) {
         console.log('⏳ Pas assez de gagnants pour créer le tour suivant');
         return;
       }
-      
+
       const batch = writeBatch(db);
       const matchesRef = collection(db, `tournaments/${tournamentId}/matches`);
-      
+
       // Cas 1 : Exactement 2 gagnants = Demi-finales complétées → Créer Finale + Petite finale
       if (winners.length === 2 && losers.length === 2) {
         console.log('🏆 Demi-finales complétées → Création de la Finale et Petite finale');
-        
+
         // 1. Créer la FINALE (gagnants des demis)
         const finaleData: Omit<TournamentMatch, 'id'> = {
           tournamentId,
@@ -460,13 +460,13 @@ export class MatchService {
           status: 'pending',
           createdAt: new Date()
         };
-        
+
         const finaleRef = doc(matchesRef);
         batch.set(finaleRef, {
           ...finaleData,
           createdAt: serverTimestamp()
         });
-        
+
         // 2. Créer la PETITE FINALE (perdants des demis)
         const thirdPlaceData: Omit<TournamentMatch, 'id'> = {
           tournamentId,
@@ -482,25 +482,25 @@ export class MatchService {
           isThirdPlaceMatch: true,
           createdAt: new Date()
         };
-        
+
         const thirdPlaceRef = doc(matchesRef);
         batch.set(thirdPlaceRef, {
           ...thirdPlaceData,
           createdAt: serverTimestamp()
         });
-        
+
         await batch.commit();
         console.log('✅ Finale (Match 1) et Petite finale (Match 2) créées');
-        
+
       } else {
         // Cas 2 : Autres cas (4, 8, 16... gagnants) → Créer les matchs du tour suivant
         const numMatches = Math.floor(winners.length / 2);
         console.log(`⚔️ Création de ${numMatches} matchs pour le tour ${currentRound + 1}`);
-        
+
         for (let i = 0; i < numMatches; i++) {
           const team1 = winners[i * 2];
           const team2 = winners[i * 2 + 1];
-          
+
           const matchData: Omit<TournamentMatch, 'id'> = {
             tournamentId,
             gameMode,
@@ -514,18 +514,18 @@ export class MatchService {
             status: 'pending',
             createdAt: new Date()
           };
-          
+
           const newMatchRef = doc(matchesRef);
           batch.set(newMatchRef, {
             ...matchData,
             createdAt: serverTimestamp()
           });
         }
-        
+
         await batch.commit();
         console.log(`✅ ${numMatches} matchs générés pour le tour ${currentRound + 1}`);
       }
-      
+
     } catch (error) {
       console.error('❌ Erreur lors de la génération des matchs du tour suivant:', error);
       throw error;
@@ -538,16 +538,16 @@ export class MatchService {
   static async getMatches(tournamentId: string): Promise<TournamentMatch[]> {
     try {
       console.log('🔍 getMatches - Chargement des matchs pour tournoi:', tournamentId);
-      
+
       // Ne pas utiliser orderBy sur 'round' car les matchs de groupe n'ont pas ce champ
       // On va trier côté client
       const matchesQuery = query(
         collection(db, `tournaments/${tournamentId}/matches`)
       );
-      
+
       const snapshot = await getDocs(matchesQuery);
       console.log('📦 getMatches - Documents récupérés:', snapshot.size);
-      
+
       const matches = snapshot.docs.map(doc => {
         const data = doc.data();
         console.log('📄 Match doc:', doc.id, data);
@@ -565,15 +565,15 @@ export class MatchService {
         // Les matchs de groupe d'abord
         if (a.phaseType === 'group_stage' && b.phaseType !== 'group_stage') return -1;
         if (a.phaseType !== 'group_stage' && b.phaseType === 'group_stage') return 1;
-        
+
         // Si même phase, trier par round (pour élimination) ou par matchNumber
         if (a.round !== undefined && b.round !== undefined) {
           if (a.round !== b.round) return a.round - b.round;
         }
-        
+
         return (a.matchNumber || 0) - (b.matchNumber || 0);
       });
-      
+
       console.log('✅ getMatches - Matchs triés:', sortedMatches.length);
       return sortedMatches;
     } catch (error) {
@@ -594,9 +594,9 @@ export class MatchService {
       where('phaseType', '==', phaseType),
       orderBy('matchNumber')
     );
-    
+
     const snapshot = await getDocs(matchesQuery);
-    
+
     return snapshot.docs.map(doc => {
       const data = doc.data();
       return {
@@ -618,9 +618,9 @@ export class MatchService {
       where('round', '==', round),
       orderBy('matchNumber')
     );
-    
+
     const snapshot = await getDocs(matchesQuery);
-    
+
     return snapshot.docs.map(doc => {
       const data = doc.data();
       return {
@@ -647,7 +647,7 @@ export class MatchService {
     isMatchComplete: boolean = true
   ): Promise<void> {
     const matchRef = doc(db, `tournaments/${tournamentId}/matches`, matchId);
-    
+
     const updateData = {
       winnerId,
       winnerName,
@@ -657,9 +657,9 @@ export class MatchService {
       matchResult,
       ...(isMatchComplete && { completedDate: serverTimestamp() })
     };
-    
+
     await updateDoc(matchRef, updateData);
-    
+
     console.log(`${isMatchComplete ? 'Match' : 'Manche'} ${matchId} enregistré(e)`);
   }
 
@@ -671,11 +671,11 @@ export class MatchService {
       collection(db, `tournaments/${tournamentId}/matches`),
       where('round', '==', round)
     );
-    
+
     const snapshot = await getDocs(matchesQuery);
-    
+
     if (snapshot.empty) return false;
-    
+
     return snapshot.docs.every(doc => {
       const match = doc.data() as TournamentMatch;
       return match.status === 'completed';
@@ -694,7 +694,7 @@ export class MatchService {
    */
   static getRoundName(round: number, totalRounds: number): string {
     const roundsFromEnd = totalRounds - round + 1;
-    
+
     switch (roundsFromEnd) {
       case 1:
         return 'Finale';
@@ -868,30 +868,60 @@ export class MatchService {
   }
 
   /**
-   * Vérifier si tous les matchs de groupe sont terminés
+   * Sélectionner les meilleurs non-qualifiés de tous les groupes (repêchage adaptatif)
+   * Fonctionne comme les "meilleurs troisièmes" de la CDM/CAN :
+   * - Collecte tous les non-qualifiés de chaque groupe
+   * - Les trie entre eux par points puis kills
+   * - Sélectionne les N meilleurs pour compléter le bracket
    */
-  static async areGroupStagesCompleted(tournamentId: string): Promise<boolean> {
-    const matchesQuery = query(
-      collection(db, `tournaments/${tournamentId}/matches`),
-      where('phaseType', '==', 'group_stage')
-    );
+  static async selectBestNonQualifiedTeams(
+    tournamentId: string,
+    groupNames: string[],
+    qualifiersPerGroup: number,
+    slotsNeeded: number
+  ): Promise<{ teamId: string; teamName: string; groupName: string; points: number; kills: number }[]> {
+    const allNonQualified: { teamId: string; teamName: string; groupName: string; points: number; kills: number }[] = [];
 
-    const snapshot = await getDocs(matchesQuery);
-    if (snapshot.empty) return false;
+    for (const groupName of groupNames) {
+      const standings = await this.getGroupStandings(tournamentId, groupName);
+      // Les non-qualifiés sont ceux après la position qualifiersPerGroup
+      const nonQualified = standings.slice(qualifiersPerGroup);
+      nonQualified.forEach(team => {
+        allNonQualified.push({
+          teamId: team.teamId,
+          teamName: team.teamName,
+          groupName,
+          points: team.points,
+          kills: team.kills
+        });
+      });
+    }
 
-    return snapshot.docs.every(doc => {
-      const match = doc.data() as TournamentMatch;
-      return match.status === 'completed';
+    // Trier tous les non-qualifiés par points (desc) puis kills (desc)
+    allNonQualified.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      return b.kills - a.kills;
     });
+
+    // Sélectionner les N meilleurs
+    const selected = allNonQualified.slice(0, slotsNeeded);
+
+    console.log(`🔄 Repêchage - Candidats: ${allNonQualified.length}, Sélectionnés: ${selected.length}`);
+    selected.forEach((team, i) => {
+      console.log(`   ${i + 1}. ${team.teamName} (${team.groupName}) - ${team.points} pts, ${team.kills} kills`);
+    });
+
+    return selected;
   }
 
   /**
    * Générer la phase d'élimination avec les équipes qualifiées des groupes
+   * Inclut le repêchage adaptatif si le nombre de qualifiés n'est pas une puissance de 2
    */
   static async generateEliminationFromGroups(
     tournamentId: string,
     tournament: Tournament
-  ): Promise<void> {
+  ): Promise<{ directQualified: number; repechageCount: number; totalTeams: number; repechageTeams: { teamName: string; groupName: string; points: number; kills: number }[] }> {
     const groupConfig = tournament.customFormat?.groupStage;
     if (!groupConfig) {
       throw new Error('Configuration des groupes manquante');
@@ -905,15 +935,16 @@ export class MatchService {
       where('phaseType', '==', 'group_stage')
     );
     const snapshot = await getDocs(matchesQuery);
-    const groupNames = new Set<string>();
+    const groupNamesSet = new Set<string>();
     snapshot.docs.forEach(doc => {
       const match = doc.data() as TournamentMatch;
-      if (match.groupName) groupNames.add(match.groupName);
+      if (match.groupName) groupNamesSet.add(match.groupName);
     });
+    const groupNamesList = Array.from(groupNamesSet).sort();
 
-    // Récupérer les qualifiés de chaque groupe
+    // Récupérer les qualifiés directs de chaque groupe
     const qualifiedTeams: { teamId: string; teamName: string }[] = [];
-    for (const groupName of Array.from(groupNames)) {
+    for (const groupName of groupNamesList) {
       const standings = await this.getGroupStandings(tournamentId, groupName);
       const topTeams = standings.slice(0, qualifiersPerGroup);
       qualifiedTeams.push(...topTeams.map(t => ({ teamId: t.teamId, teamName: t.teamName })));
@@ -923,16 +954,45 @@ export class MatchService {
       throw new Error('Pas assez d\'équipes qualifiées pour la phase d\'élimination');
     }
 
-    // Mélanger aléatoirement les équipes qualifiées pour des matchs équitables
-    const shuffledTeams = [...qualifiedTeams].sort(() => Math.random() - 0.5);
-    console.log(`🎲 Équipes mélangées aléatoirement pour la phase d'élimination`);
+    console.log(`✅ Qualifiés directs: ${qualifiedTeams.length} équipes (top ${qualifiersPerGroup} de ${groupNamesList.length} groupes)`);
 
-    // Générer les matchs d'élimination avec les qualifiés
+    // Calculer la puissance de 2 cible
+    const targetBracketSize = Math.pow(2, Math.ceil(Math.log2(qualifiedTeams.length)));
+    let repechageTeams: { teamId: string; teamName: string; groupName: string; points: number; kills: number }[] = [];
+
+    // Repêchage adaptatif si besoin
+    if (qualifiedTeams.length < targetBracketSize) {
+      const slotsNeeded = targetBracketSize - qualifiedTeams.length;
+      console.log(`🔄 Repêchage nécessaire: ${qualifiedTeams.length} qualifiés → cible ${targetBracketSize} → ${slotsNeeded} repêchés à sélectionner`);
+
+      repechageTeams = await this.selectBestNonQualifiedTeams(
+        tournamentId,
+        groupNamesList,
+        qualifiersPerGroup,
+        slotsNeeded
+      );
+
+      if (repechageTeams.length < slotsNeeded) {
+        console.warn(`⚠️ Seulement ${repechageTeams.length} repêchés disponibles sur ${slotsNeeded} nécessaires`);
+      }
+    } else {
+      console.log(`✅ Nombre de qualifiés (${qualifiedTeams.length}) = puissance de 2, pas de repêchage nécessaire`);
+    }
+
+    // Fusionner qualifiés directs + repêchés
+    const allTeams = [
+      ...qualifiedTeams,
+      ...repechageTeams.map(t => ({ teamId: t.teamId, teamName: t.teamName }))
+    ];
+
+    // Mélanger aléatoirement pour des matchs équitables
+    const shuffledTeams = [...allTeams].sort(() => Math.random() - 0.5);
+    console.log(`🎲 ${allTeams.length} équipes mélangées pour la phase d'élimination (${qualifiedTeams.length} directs + ${repechageTeams.length} repêchés)`);
+
+    // Générer les matchs d'élimination
     const batch = writeBatch(db);
     const matchesRef = collection(db, `tournaments/${tournamentId}/matches`);
     const numMatches = Math.floor(shuffledTeams.length / 2);
-    
-    // Le premier tour d'élimination après les groupes est toujours round 1
     const firstRoundNumber = 1;
 
     for (let i = 0; i < numMatches; i++) {
@@ -961,7 +1021,25 @@ export class MatchService {
     }
 
     await batch.commit();
-    console.log(`Phase d'élimination générée avec ${qualifiedTeams.length} équipes qualifiées`);
+
+    const summary = {
+      directQualified: qualifiedTeams.length,
+      repechageCount: repechageTeams.length,
+      totalTeams: allTeams.length,
+      repechageTeams: repechageTeams.map(t => ({
+        teamName: t.teamName,
+        groupName: t.groupName,
+        points: t.points,
+        kills: t.kills
+      }))
+    };
+
+    console.log(`\n🏆 Phase d'élimination générée avec succès !`);
+    console.log(`   - Qualifiés directs: ${summary.directQualified}`);
+    console.log(`   - Repêchés: ${summary.repechageCount}`);
+    console.log(`   - Total: ${summary.totalTeams} équipes → ${numMatches} matchs`);
+
+    return summary;
   }
 
   /**
@@ -970,12 +1048,12 @@ export class MatchService {
   static async deleteAllMatches(tournamentId: string): Promise<void> {
     const matchesQuery = query(collection(db, `tournaments/${tournamentId}/matches`));
     const snapshot = await getDocs(matchesQuery);
-    
+
     const batch = writeBatch(db);
     snapshot.docs.forEach(doc => {
       batch.delete(doc.ref);
     });
-    
+
     await batch.commit();
     console.log(`Tous les matchs du tournoi ${tournamentId} ont été supprimés`);
   }
@@ -989,12 +1067,12 @@ export class MatchService {
       where('phaseType', '==', 'elimination')
     );
     const snapshot = await getDocs(matchesQuery);
-    
+
     const batch = writeBatch(db);
     snapshot.docs.forEach(doc => {
       batch.delete(doc.ref);
     });
-    
+
     await batch.commit();
     console.log(`${snapshot.size} matchs d'élimination supprimés du tournoi ${tournamentId}`);
   }

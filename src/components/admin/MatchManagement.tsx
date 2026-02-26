@@ -119,7 +119,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
       toast.error('Impossible de régénérer : des résultats ont déjà été enregistrés dans la phase éliminatoire');
       return;
     }
-    
+
     // Vérifier si des matchs d'élimination existent déjà (sans résultats)
     if (eliminationMatches.length > 0) {
       const confirmed = confirm(
@@ -127,7 +127,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
         'Voulez-vous les supprimer et régénérer la phase éliminatoire ?'
       );
       if (!confirmed) return;
-      
+
       // Supprimer les matchs d'élimination existants
       await MatchService.deleteEliminationMatches(tournamentId);
     } else {
@@ -137,9 +137,19 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
 
     setGenerating(true);
     try {
-      await MatchService.generateEliminationFromGroups(tournamentId, tournament);
+      const summary = await MatchService.generateEliminationFromGroups(tournamentId, tournament);
       await loadData();
-      toast.success('Phase d\'élimination générée avec succès !');
+
+      if (summary.repechageCount > 0) {
+        const repechageNames = summary.repechageTeams.map(t => `${t.teamName} (${t.groupName}, ${t.points}pts/${t.kills}kills)`).join(', ');
+        toast.success(
+          `Phase d'élimination générée ! ${summary.directQualified} qualifiés directs + ${summary.repechageCount} repêchés = ${summary.totalTeams} équipes`,
+          { duration: 6000 }
+        );
+        toast(`🔄 Repêchés : ${repechageNames}`, { duration: 8000, icon: '🏆' });
+      } else {
+        toast.success(`Phase d'élimination générée avec ${summary.totalTeams} équipes qualifiées !`);
+      }
     } catch (error) {
       console.error('Erreur lors de la génération:', error);
       toast.error('Erreur lors de la génération de la phase d\'élimination');
@@ -153,21 +163,21 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
     setSelectedMatch(match);
     setShowResultModal(true); // ✅ Ouvrir le modal immédiatement
     setSavingResult(true); // Afficher un loader pendant le chargement
-    
+
     // Charger les joueurs des deux équipes
     try {
       const team1Ref = doc(db, `tournaments/${tournamentId}/teams`, match.team1Id);
       const team2Ref = doc(db, `tournaments/${tournamentId}/teams`, match.team2Id);
-      
+
       const team1Snap = await getDoc(team1Ref);
       const team2Snap = await getDoc(team2Ref);
-      
+
       const team1Data = team1Snap.data() as TournamentTeam;
       const team2Data = team2Snap.data() as TournamentTeam;
-      
+
       const team1Players = team1Data?.players || [];
       const team2Players = team2Data?.players || [];
-      
+
       setMatchResult({
         winnerId: '',
         team1Score: 0,
@@ -198,34 +208,34 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
     const isMPMode = GameModeUtils.isMultiplayerMode(tournament.gameMode);
     const bestOf = isMPMode ? (tournament.customFormat?.bestOf || 3) : 1;
     const requiredWins = Math.ceil(bestOf / 2);
-    
+
     // Récupérer le score actuel du match (s'il existe déjà des manches)
     const currentResult = selectedMatch.matchResult;
     const currentTeam1Score = currentResult?.team1Stats.roundsWon || 0;
     const currentTeam2Score = currentResult?.team2Stats.roundsWon || 0;
     const currentRounds = currentResult?.rounds || [];
-    
+
     // Calculer le nouveau score après cette manche
     let newTeam1Score = currentTeam1Score;
     let newTeam2Score = currentTeam2Score;
-    
+
     if (matchResult.winnerId === selectedMatch.team1Id) {
       newTeam1Score += 1; // Team 1 gagne cette manche
     } else {
       newTeam2Score += 1; // Team 2 gagne cette manche
     }
-    
+
     // Vérifier si le match est terminé
     const isMatchComplete = newTeam1Score >= requiredWins || newTeam2Score >= requiredWins;
 
-    const loserId = matchResult.winnerId === selectedMatch.team1Id 
-      ? selectedMatch.team2Id 
+    const loserId = matchResult.winnerId === selectedMatch.team1Id
+      ? selectedMatch.team2Id
       : selectedMatch.team1Id;
-    const winnerName = matchResult.winnerId === selectedMatch.team1Id 
-      ? selectedMatch.team1Name 
+    const winnerName = matchResult.winnerId === selectedMatch.team1Id
+      ? selectedMatch.team1Name
       : selectedMatch.team2Name;
-    const loserName = matchResult.winnerId === selectedMatch.team1Id 
-      ? selectedMatch.team2Name 
+    const loserName = matchResult.winnerId === selectedMatch.team1Id
+      ? selectedMatch.team2Name
       : selectedMatch.team1Name;
 
     try {
@@ -239,18 +249,18 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
         team1PlayerStats: matchResult.team1PlayerStats,
         team2PlayerStats: matchResult.team2PlayerStats
       };
-      
+
       // Ajouter cette manche à l'historique
       const updatedRounds = [...currentRounds, newRound];
-      
+
       // Calculer les kills totaux (somme de toutes les manches)
       const totalTeam1Kills = (currentResult?.team1Stats.totalKills || 0) + matchResult.team1Kills;
       const totalTeam2Kills = (currentResult?.team2Stats.totalKills || 0) + matchResult.team2Kills;
-      
+
       // Calculer les kills totaux par joueur (somme de toutes les manches)
       const currentTeam1PlayerStats = currentResult?.team1Stats.playerStats || [];
       const currentTeam2PlayerStats = currentResult?.team2Stats.playerStats || [];
-      
+
       const updatedTeam1PlayerStats = matchResult.team1PlayerStats.map(newStat => {
         const existingStat = currentTeam1PlayerStats.find(s => s.playerId === newStat.playerId);
         return {
@@ -258,7 +268,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
           kills: (existingStat?.kills || 0) + newStat.kills
         };
       });
-      
+
       const updatedTeam2PlayerStats = matchResult.team2PlayerStats.map(newStat => {
         const existingStat = currentTeam2PlayerStats.find(s => s.playerId === newStat.playerId);
         return {
@@ -266,8 +276,8 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
           kills: (existingStat?.kills || 0) + newStat.kills
         };
       });
-      
-      const finalScore = isMPMode 
+
+      const finalScore = isMPMode
         ? `${newTeam1Score}-${newTeam2Score}`
         : `${matchResult.team1Kills}-${matchResult.team2Kills}`;
 
@@ -288,18 +298,18 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
       };
 
       // Déterminer le gagnant final du match (si terminé)
-      const finalWinnerId = isMatchComplete 
+      const finalWinnerId = isMatchComplete
         ? (newTeam1Score > newTeam2Score ? selectedMatch.team1Id : selectedMatch.team2Id)
         : matchResult.winnerId; // Temporaire si match en cours
-      
+
       const finalWinnerName = isMatchComplete
         ? (newTeam1Score > newTeam2Score ? selectedMatch.team1Name : selectedMatch.team2Name)
         : winnerName;
-      
+
       const finalLoserId = isMatchComplete
         ? (newTeam1Score > newTeam2Score ? selectedMatch.team2Id : selectedMatch.team1Id)
         : loserId;
-      
+
       const finalLoserName = isMatchComplete
         ? (newTeam1Score > newTeam2Score ? selectedMatch.team2Name : selectedMatch.team1Name)
         : loserName;
@@ -329,7 +339,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
             playerStat.kills // Peut être 0
           );
         }
-        
+
         // Mettre à jour pour les joueurs de l'équipe 2 (même avec 0 kill)
         for (const playerStat of matchResult.team2PlayerStats) {
           await KillLeaderboardService.updatePlayerKillStats(
@@ -342,7 +352,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
             playerStat.kills // Peut être 0
           );
         }
-        
+
         // Recalculer le classement
         await KillLeaderboardService.recalculateLeaderboard(tournamentId, tournament.gameMode);
       } catch (leaderboardError) {
@@ -356,11 +366,11 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
         // Vérifier si tous les matchs play-in sont terminés
         const allPlayInMatches = await MatchService.getMatchesByPhaseType(tournamentId, 'play_in');
         const allPlayInCompleted = allPlayInMatches.every(m => m.status === 'completed');
-        
+
         if (allPlayInCompleted) {
           console.log('✅ Tous les matchs play-in sont terminés. Génération de l\'élimination...');
           alert('Tous les matchs play-in sont terminés. L\'élimination va être générée automatiquement.');
-          
+
           // Générer l'élimination après le play-in
           await MatchService.generateEliminationAfterPlayIn(tournamentId, tournament.gameMode);
           toast.success('Élimination générée avec succès après le play-in !');
@@ -373,7 +383,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
           const allMatches = await MatchService.getMatchesByRound(tournamentId, selectedMatch.round);
           const hasFinale = allMatches.some(m => !m.isThirdPlaceMatch);
           const hasThirdPlace = allMatches.some(m => m.isThirdPlaceMatch);
-          
+
           // Si c'est le dernier tour (finale + petite finale), ne pas proposer de générer
           if (hasFinale && hasThirdPlace) {
             console.log('🏆 Finale et petite finale terminées. Tournoi terminé !');
@@ -400,9 +410,9 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
           status: 'in_progress',
           matchResult: result
         });
-        
+
         toast.success(`Manche ${currentRounds.length + 1} enregistrée ! Score actuel : ${finalScore}`);
-        
+
         // Réinitialiser le formulaire pour la prochaine manche
         setMatchResult({
           winnerId: '',
@@ -413,7 +423,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
           team1PlayerStats: matchResult.team1PlayerStats.map(p => ({ ...p, kills: 0 })),
           team2PlayerStats: matchResult.team2PlayerStats.map(p => ({ ...p, kills: 0 }))
         });
-        
+
         // Recharger les données en arrière-plan (sans fermer le modal)
         loadData();
       }
@@ -431,11 +441,11 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
     try {
       const leaderboard = await KillLeaderboardService.getKillLeaderboard(tournamentId, tournament.gameMode);
       setKillLeaderboard(leaderboard);
-      
+
       // Charger aussi les records globaux
       const records = await KillLeaderboardService.getGlobalRecordsByMode(tournament.gameMode);
       setGlobalRecords(records);
-      
+
       setShowKillLeaderboard(true);
     } catch (error) {
       console.error('Erreur lors du chargement du Kill Leaderboard:', error);
@@ -495,7 +505,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
   console.log('Groupes de matchs:', Object.keys(matchesByGroup), 'Tours:', Object.keys(matchesByRound));
 
   // Calculer le nombre total de rounds prévus basé sur le nombre d'équipes au premier round
-  const firstRound = Object.keys(matchesByRound).length > 0 
+  const firstRound = Object.keys(matchesByRound).length > 0
     ? Math.min(...Object.keys(matchesByRound).map(Number))
     : 0;
   const firstRoundMatches = firstRound > 0 ? matchesByRound[firstRound] : [];
@@ -504,7 +514,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
   const hasGroupStage = groupStageMatches.length > 0;
   const groupStageCompleted = hasGroupStage && groupStageMatches.every(m => m.status === 'completed');
   const hasEliminationResults = eliminationMatches.some(m => m.status === 'completed' || m.status === 'in_progress');
-  const canGenerateElimination = groupStageCompleted && 
+  const canGenerateElimination = groupStageCompleted &&
     tournament.customFormat?.tournamentFormat === 'groups_then_elimination';
 
   if (loading) {
@@ -546,7 +556,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
             {(() => {
               // Vérifier si des résultats ont été enregistrés
               const hasResults = matches.some(m => m.status === 'completed' || m.status === 'in_progress');
-              
+
               return (
                 <button
                   onClick={handleGenerateMatches}
@@ -573,10 +583,10 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
             const format = tournament.customFormat?.tournamentFormat || 'elimination_direct';
             const isMPMode = GameModeUtils.isMultiplayerMode(tournament.gameMode);
             const bestOf = tournament.customFormat?.bestOf;
-            
+
             let formatLabel = '';
             let formatColor = '';
-            
+
             switch (format) {
               case 'elimination_direct':
                 formatLabel = 'Élimination Directe';
@@ -591,7 +601,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                 formatColor = 'bg-green-100 text-green-800 border-green-300';
                 break;
             }
-            
+
             return (
               <>
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${formatColor}`}>
@@ -618,50 +628,46 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
 
       {/* Bouton pour générer la phase d'élimination */}
       {canGenerateElimination && (
-        <div className={`border-2 rounded-xl p-6 ${
-          eliminationMatches.length === 0 
-            ? 'bg-green-50 border-green-500' 
+        <div className={`border-2 rounded-xl p-6 ${eliminationMatches.length === 0
+            ? 'bg-green-50 border-green-500'
             : hasEliminationResults
-            ? 'bg-orange-50 border-orange-500'
-            : 'bg-blue-50 border-blue-500'
-        }`}>
+              ? 'bg-orange-50 border-orange-500'
+              : 'bg-blue-50 border-blue-500'
+          }`}>
           <div className="flex items-center justify-between">
             <div>
-              <h3 className={`text-lg font-bold mb-2 ${
-                eliminationMatches.length === 0 
-                  ? 'text-green-900' 
+              <h3 className={`text-lg font-bold mb-2 ${eliminationMatches.length === 0
+                  ? 'text-green-900'
                   : hasEliminationResults
-                  ? 'text-orange-900'
-                  : 'text-blue-900'
-              }`}>
-                {eliminationMatches.length === 0 
-                  ? 'Phase de groupes terminée !' 
+                    ? 'text-orange-900'
+                    : 'text-blue-900'
+                }`}>
+                {eliminationMatches.length === 0
+                  ? 'Phase de groupes terminée !'
                   : 'Régénérer la phase éliminatoire'}
               </h3>
-              <p className={`text-sm ${
-                eliminationMatches.length === 0 
-                  ? 'text-green-700' 
+              <p className={`text-sm ${eliminationMatches.length === 0
+                  ? 'text-green-700'
                   : hasEliminationResults
-                  ? 'text-orange-700'
-                  : 'text-blue-700'
-              }`}>
-                {eliminationMatches.length === 0 
-                  ? 'Tous les matchs de groupe sont terminés. Vous pouvez maintenant générer la phase d\'élimination.' 
+                    ? 'text-orange-700'
+                    : 'text-blue-700'
+                }`}>
+                {eliminationMatches.length === 0
+                  ? 'Tous les matchs de groupe sont terminés. Vous pouvez maintenant générer la phase d\'élimination.'
                   : hasEliminationResults
-                  ? '⚠️ Attention : Des résultats existent déjà. La régénération les supprimera définitivement.'
-                  : 'Vous pouvez régénérer la phase éliminatoire (aucun résultat enregistré).'}
+                    ? '⚠️ Attention : Des résultats existent déjà. La régénération les supprimera définitivement.'
+                    : 'Vous pouvez régénérer la phase éliminatoire (aucun résultat enregistré).'}
               </p>
             </div>
             <button
               onClick={handleGenerateEliminationPhase}
               disabled={generating || hasEliminationResults}
-              className={`px-6 py-3 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 font-semibold text-white ${
-                eliminationMatches.length === 0 
-                  ? 'bg-green-600 hover:bg-green-700' 
+              className={`px-6 py-3 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 font-semibold text-white ${eliminationMatches.length === 0
+                  ? 'bg-green-600 hover:bg-green-700'
                   : hasEliminationResults
-                  ? 'bg-orange-600 hover:bg-orange-700 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+                    ? 'bg-orange-600 hover:bg-orange-700 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               title={hasEliminationResults ? 'Impossible de régénérer : des résultats ont été enregistrés' : ''}
             >
               {generating ? (
@@ -683,8 +689,8 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
           <p className="text-gray-600 mb-6">
             Cliquez sur &quot;Générer les matchs&quot; pour créer automatiquement {
               tournament.customFormat?.tournamentFormat === 'elimination_direct' ? 'le bracket d\'élimination' :
-              tournament.customFormat?.tournamentFormat === 'groups_only' ? 'les matchs de groupes' :
-              'les matchs de groupes et la phase d\'élimination'
+                tournament.customFormat?.tournamentFormat === 'groups_only' ? 'les matchs de groupes' :
+                  'les matchs de groupes et la phase d\'élimination'
             }
           </p>
         </div>
@@ -708,160 +714,158 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
               </div>
               {/* Tri DÉCROISSANT : Finale → Demi → Quarts → etc. */}
               {Object.keys(matchesByRound)
-            .map(Number)
-            .sort((a, b) => b - a)
-            .map(round => {
-              // Séparer les matchs normaux et la petite finale
-              const regularMatches = matchesByRound[round].filter(m => !m.isThirdPlaceMatch);
-              const thirdPlaceMatch = matchesByRound[round].find(m => m.isThirdPlaceMatch);
-              
-              return (
-                <div key={round} className="space-y-4">
-                  {/* Matchs normaux du round */}
-                  {regularMatches.length > 0 && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <Trophy className="w-5 h-5 text-purple-500" />
-                        {MatchService.getRoundName(round, totalRounds)}
-                      </h3>
-                      <div className="space-y-3">
-                        {regularMatches.map(match => (
-                          <div
-                            key={match.id}
-                            className={`border-2 rounded-lg p-4 transition-all ${
-                              match.status === 'completed'
-                                ? 'border-green-300 bg-green-50'
-                                : match.status === 'in_progress'
-                                ? 'border-blue-300 bg-blue-50'
-                                : 'border-gray-200 bg-white'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-4">
-                                  <span className="text-sm font-medium text-gray-500">Match {match.matchNumber}</span>
-                                  {match.status === 'completed' && (
-                                    <CheckCircle className="w-4 h-4 text-green-600" />
-                                  )}
-                                  {match.status === 'in_progress' && (
-                                    <Clock className="w-4 h-4 text-blue-600 animate-pulse" />
-                                  )}
-                                </div>
-                                <div className="mt-2 space-y-1">
-                                  <div className={`flex items-center justify-between gap-2 ${match.winnerId === match.team1Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
-                                    <div className="flex items-center gap-2">
-                                      {match.winnerId === match.team1Id && <Trophy className="w-4 h-4 text-yellow-500" />}
-                                      {match.team1Name}
-                                    </div>
-                                    {match.status === 'completed' && match.matchResult && (
-                                      <span className="text-lg font-bold">{match.matchResult.team1Stats.roundsWon}</span>
-                                    )}
-                                  </div>
-                                  <div className="text-gray-400 text-sm">VS</div>
-                                  <div className={`flex items-center justify-between gap-2 ${match.winnerId === match.team2Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
-                                    <div className="flex items-center gap-2">
-                                      {match.winnerId === match.team2Id && <Trophy className="w-4 h-4 text-yellow-500" />}
-                                      {match.team2Name}
-                                    </div>
-                                    {match.status === 'completed' && match.matchResult && (
-                                      <span className="text-lg font-bold">{match.matchResult.team2Stats.roundsWon}</span>
-                                    )}
-                                  </div>
-                                  {match.status === 'completed' && match.matchResult && (
-                                    <div className="text-xs text-gray-500 mt-2">
-                                      Score final: {match.matchResult.finalScore} • Kills: {match.matchResult.team1Stats.totalKills}-{match.matchResult.team2Stats.totalKills}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              {(match.status === 'pending' || match.status === 'in_progress') && (
-                                <button
-                                  onClick={() => handleOpenResultModal(match)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                                >
-                                  <Target className="w-4 h-4" />
-                                  {match.status === 'in_progress' ? 'Continuer le match' : 'Enregistrer résultat'}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Petite finale (3ème place) */}
-                  {thirdPlaceMatch && (
-                    <div className="bg-white rounded-xl shadow-sm border-2 border-orange-300 p-6">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <Medal className="w-5 h-5 text-orange-600" />
-                        Petite Finale (3ème place)
-                      </h3>
-                      <div className="space-y-3">
-                        <div
-                          className={`border-2 rounded-lg p-4 transition-all ${
-                            thirdPlaceMatch.status === 'completed'
-                              ? 'border-green-300 bg-green-50'
-                              : thirdPlaceMatch.status === 'in_progress'
-                              ? 'border-blue-300 bg-blue-50'
-                              : 'border-gray-200 bg-white'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-4">
-                                <span className="text-sm font-medium text-gray-500">Match {thirdPlaceMatch.matchNumber}</span>
-                                {thirdPlaceMatch.status === 'completed' && (
-                                  <CheckCircle className="w-4 h-4 text-green-600" />
-                                )}
-                                {thirdPlaceMatch.status === 'in_progress' && (
-                                  <Clock className="w-4 h-4 text-blue-600 animate-pulse" />
-                                )}
-                              </div>
-                              <div className="mt-2 space-y-1">
-                                <div className={`flex items-center justify-between gap-2 ${thirdPlaceMatch.winnerId === thirdPlaceMatch.team1Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
-                                  <div className="flex items-center gap-2">
-                                    {thirdPlaceMatch.winnerId === thirdPlaceMatch.team1Id && <Trophy className="w-4 h-4 text-yellow-500" />}
-                                    {thirdPlaceMatch.team1Name}
-                                  </div>
-                                  {thirdPlaceMatch.status === 'completed' && thirdPlaceMatch.matchResult && (
-                                    <span className="text-lg font-bold">{thirdPlaceMatch.matchResult.team1Stats.roundsWon}</span>
-                                  )}
-                                </div>
-                                <div className="text-gray-400 text-sm">VS</div>
-                                <div className={`flex items-center justify-between gap-2 ${thirdPlaceMatch.winnerId === thirdPlaceMatch.team2Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
-                                  <div className="flex items-center gap-2">
-                                    {thirdPlaceMatch.winnerId === thirdPlaceMatch.team2Id && <Trophy className="w-4 h-4 text-yellow-500" />}
-                                    {thirdPlaceMatch.team2Name}
-                                  </div>
-                                  {thirdPlaceMatch.status === 'completed' && thirdPlaceMatch.matchResult && (
-                                    <span className="text-lg font-bold">{thirdPlaceMatch.matchResult.team2Stats.roundsWon}</span>
-                                  )}
-                                </div>
-                                {thirdPlaceMatch.status === 'completed' && thirdPlaceMatch.matchResult && (
-                                  <div className="text-xs text-gray-500 mt-2">
-                                    Score final: {thirdPlaceMatch.matchResult.finalScore} • Kills: {thirdPlaceMatch.matchResult.team1Stats.totalKills}-{thirdPlaceMatch.matchResult.team2Stats.totalKills}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            {(thirdPlaceMatch.status === 'pending' || thirdPlaceMatch.status === 'in_progress') && (
-                              <button
-                                onClick={() => handleOpenResultModal(thirdPlaceMatch)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                .map(Number)
+                .sort((a, b) => b - a)
+                .map(round => {
+                  // Séparer les matchs normaux et la petite finale
+                  const regularMatches = matchesByRound[round].filter(m => !m.isThirdPlaceMatch);
+                  const thirdPlaceMatch = matchesByRound[round].find(m => m.isThirdPlaceMatch);
+
+                  return (
+                    <div key={round} className="space-y-4">
+                      {/* Matchs normaux du round */}
+                      {regularMatches.length > 0 && (
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <Trophy className="w-5 h-5 text-purple-500" />
+                            {MatchService.getRoundName(round, totalRounds)}
+                          </h3>
+                          <div className="space-y-3">
+                            {regularMatches.map(match => (
+                              <div
+                                key={match.id}
+                                className={`border-2 rounded-lg p-4 transition-all ${match.status === 'completed'
+                                    ? 'border-green-300 bg-green-50'
+                                    : match.status === 'in_progress'
+                                      ? 'border-blue-300 bg-blue-50'
+                                      : 'border-gray-200 bg-white'
+                                  }`}
                               >
-                                <Target className="w-4 h-4" />
-                                {thirdPlaceMatch.status === 'in_progress' ? 'Continuer le match' : 'Enregistrer résultat'}
-                              </button>
-                            )}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-4">
+                                      <span className="text-sm font-medium text-gray-500">Match {match.matchNumber}</span>
+                                      {match.status === 'completed' && (
+                                        <CheckCircle className="w-4 h-4 text-green-600" />
+                                      )}
+                                      {match.status === 'in_progress' && (
+                                        <Clock className="w-4 h-4 text-blue-600 animate-pulse" />
+                                      )}
+                                    </div>
+                                    <div className="mt-2 space-y-1">
+                                      <div className={`flex items-center justify-between gap-2 ${match.winnerId === match.team1Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
+                                        <div className="flex items-center gap-2">
+                                          {match.winnerId === match.team1Id && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                          {match.team1Name}
+                                        </div>
+                                        {match.status === 'completed' && match.matchResult && (
+                                          <span className="text-lg font-bold">{match.matchResult.team1Stats.roundsWon}</span>
+                                        )}
+                                      </div>
+                                      <div className="text-gray-400 text-sm">VS</div>
+                                      <div className={`flex items-center justify-between gap-2 ${match.winnerId === match.team2Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
+                                        <div className="flex items-center gap-2">
+                                          {match.winnerId === match.team2Id && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                          {match.team2Name}
+                                        </div>
+                                        {match.status === 'completed' && match.matchResult && (
+                                          <span className="text-lg font-bold">{match.matchResult.team2Stats.roundsWon}</span>
+                                        )}
+                                      </div>
+                                      {match.status === 'completed' && match.matchResult && (
+                                        <div className="text-xs text-gray-500 mt-2">
+                                          Score final: {match.matchResult.finalScore} • Kills: {match.matchResult.team1Stats.totalKills}-{match.matchResult.team2Stats.totalKills}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {(match.status === 'pending' || match.status === 'in_progress') && (
+                                    <button
+                                      onClick={() => handleOpenResultModal(match)}
+                                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                                    >
+                                      <Target className="w-4 h-4" />
+                                      {match.status === 'in_progress' ? 'Continuer le match' : 'Enregistrer résultat'}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* Petite finale (3ème place) */}
+                      {thirdPlaceMatch && (
+                        <div className="bg-white rounded-xl shadow-sm border-2 border-orange-300 p-6">
+                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <Medal className="w-5 h-5 text-orange-600" />
+                            Petite Finale (3ème place)
+                          </h3>
+                          <div className="space-y-3">
+                            <div
+                              className={`border-2 rounded-lg p-4 transition-all ${thirdPlaceMatch.status === 'completed'
+                                  ? 'border-green-300 bg-green-50'
+                                  : thirdPlaceMatch.status === 'in_progress'
+                                    ? 'border-blue-300 bg-blue-50'
+                                    : 'border-gray-200 bg-white'
+                                }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-sm font-medium text-gray-500">Match {thirdPlaceMatch.matchNumber}</span>
+                                    {thirdPlaceMatch.status === 'completed' && (
+                                      <CheckCircle className="w-4 h-4 text-green-600" />
+                                    )}
+                                    {thirdPlaceMatch.status === 'in_progress' && (
+                                      <Clock className="w-4 h-4 text-blue-600 animate-pulse" />
+                                    )}
+                                  </div>
+                                  <div className="mt-2 space-y-1">
+                                    <div className={`flex items-center justify-between gap-2 ${thirdPlaceMatch.winnerId === thirdPlaceMatch.team1Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
+                                      <div className="flex items-center gap-2">
+                                        {thirdPlaceMatch.winnerId === thirdPlaceMatch.team1Id && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                        {thirdPlaceMatch.team1Name}
+                                      </div>
+                                      {thirdPlaceMatch.status === 'completed' && thirdPlaceMatch.matchResult && (
+                                        <span className="text-lg font-bold">{thirdPlaceMatch.matchResult.team1Stats.roundsWon}</span>
+                                      )}
+                                    </div>
+                                    <div className="text-gray-400 text-sm">VS</div>
+                                    <div className={`flex items-center justify-between gap-2 ${thirdPlaceMatch.winnerId === thirdPlaceMatch.team2Id ? 'font-bold text-green-700' : 'text-gray-700'}`}>
+                                      <div className="flex items-center gap-2">
+                                        {thirdPlaceMatch.winnerId === thirdPlaceMatch.team2Id && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                        {thirdPlaceMatch.team2Name}
+                                      </div>
+                                      {thirdPlaceMatch.status === 'completed' && thirdPlaceMatch.matchResult && (
+                                        <span className="text-lg font-bold">{thirdPlaceMatch.matchResult.team2Stats.roundsWon}</span>
+                                      )}
+                                    </div>
+                                    {thirdPlaceMatch.status === 'completed' && thirdPlaceMatch.matchResult && (
+                                      <div className="text-xs text-gray-500 mt-2">
+                                        Score final: {thirdPlaceMatch.matchResult.finalScore} • Kills: {thirdPlaceMatch.matchResult.team1Stats.totalKills}-{thirdPlaceMatch.matchResult.team2Stats.totalKills}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                {(thirdPlaceMatch.status === 'pending' || thirdPlaceMatch.status === 'in_progress') && (
+                                  <button
+                                    onClick={() => handleOpenResultModal(thirdPlaceMatch)}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                                  >
+                                    <Target className="w-4 h-4" />
+                                    {thirdPlaceMatch.status === 'in_progress' ? 'Continuer le match' : 'Enregistrer résultat'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
             </div>
           )}
 
@@ -874,7 +878,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                   Play-In Tournament
                 </h2>
               </div>
-              
+
               {/* Bloc A - Matchs simples */}
               {playInMatches.filter(m => m.blocType === 'A').length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm border border-orange-200 p-6">
@@ -884,11 +888,10 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                   </h3>
                   <div className="space-y-3">
                     {playInMatches.filter(m => m.blocType === 'A').map(match => (
-                      <div key={match.id} className={`border-2 rounded-lg p-4 transition-all ${
-                        match.status === 'completed' ? 'border-green-300 bg-green-50' :
-                        match.status === 'in_progress' ? 'border-blue-300 bg-blue-50' :
-                        'border-orange-200 bg-orange-50'
-                      }`}>
+                      <div key={match.id} className={`border-2 rounded-lg p-4 transition-all ${match.status === 'completed' ? 'border-green-300 bg-green-50' :
+                          match.status === 'in_progress' ? 'border-blue-300 bg-blue-50' :
+                            'border-orange-200 bg-orange-50'
+                        }`}>
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-500">Match {match.matchNumber}</span>
                           {match.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-600" />}
@@ -927,7 +930,7 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                   </div>
                 </div>
               )}
-              
+
               {/* Bloc B - Poule */}
               {playInMatches.filter(m => m.blocType === 'B').length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm border border-orange-200 p-6">
@@ -946,11 +949,10 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                   </div>
                   <div className="space-y-3">
                     {playInMatches.filter(m => m.blocType === 'B').map(match => (
-                      <div key={match.id} className={`border-2 rounded-lg p-4 transition-all ${
-                        match.status === 'completed' ? 'border-green-300 bg-green-50' :
-                        match.status === 'in_progress' ? 'border-blue-300 bg-blue-50' :
-                        'border-orange-200 bg-orange-50'
-                      }`}>
+                      <div key={match.id} className={`border-2 rounded-lg p-4 transition-all ${match.status === 'completed' ? 'border-green-300 bg-green-50' :
+                          match.status === 'in_progress' ? 'border-blue-300 bg-blue-50' :
+                            'border-orange-200 bg-orange-50'
+                        }`}>
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-500">Match {match.matchNumber}</span>
                           {match.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-600" />}
@@ -999,11 +1001,10 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                       onClick={() => setShowWildcardsModal(true)}
                       disabled={!playInCompleted}
                       title={!playInCompleted ? 'Terminez tous les matchs du play-in pour voir le classement des wildcards' : ''}
-                      className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
-                        playInCompleted
+                      className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-semibold ${playInCompleted
                           ? 'bg-orange-600 hover:bg-orange-700 text-white cursor-pointer'
                           : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60'
-                      }`}
+                        }`}
                     >
                       <Users className="w-5 h-5" />
                       Classement Wildcards
@@ -1037,13 +1038,12 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                     {matchesByGroup[groupName].map(match => (
                       <div
                         key={match.id}
-                        className={`border-2 rounded-lg p-4 transition-all ${
-                          match.status === 'completed'
+                        className={`border-2 rounded-lg p-4 transition-all ${match.status === 'completed'
                             ? 'border-green-300 bg-green-50'
                             : match.status === 'in_progress'
-                            ? 'border-blue-300 bg-blue-50'
-                            : 'border-gray-200 bg-white'
-                        }`}
+                              ? 'border-blue-300 bg-blue-50'
+                              : 'border-gray-200 bg-white'
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
@@ -1112,13 +1112,13 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
               <h3 className="text-lg sm:text-xl font-bold text-gray-900">Enregistrer le résultat</h3>
               {(() => {
                 const currentResult = selectedMatch.matchResult;
-                const currentScore = currentResult 
+                const currentScore = currentResult
                   ? `${currentResult.team1Stats.roundsWon}-${currentResult.team2Stats.roundsWon}`
                   : '0-0';
                 const roundNumber = (currentResult?.rounds?.length || 0) + 1;
                 const isMPMode = GameModeUtils.isMultiplayerMode(tournament.gameMode);
                 const bestOf = isMPMode ? (tournament.customFormat?.bestOf || 3) : 1;
-                
+
                 return isMPMode && (
                   <div className="mt-2 flex items-center gap-3 text-sm">
                     <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-semibold">
@@ -1131,101 +1131,101 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                 );
               })()}
             </div>
-            
+
             {/* Contenu scrollable */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {(() => {
                 const isMPMode = GameModeUtils.isMultiplayerMode(tournament.gameMode);
                 const bestOf = tournament.customFormat?.bestOf || 3;
                 const requiredWins = Math.ceil(bestOf / 2);
-                
+
                 return (
                   <div className="space-y-4 sm:space-y-6">
-                  {isMPMode && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-3">
-                      <p className="text-xs sm:text-sm text-blue-800 font-medium">
-                        Format: BO{bestOf} (Premier à {requiredWins} victoire{requiredWins > 1 ? 's' : ''}) - Le score sera calculé automatiquement
-                      </p>
+                    {isMPMode && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-3">
+                        <p className="text-xs sm:text-sm text-blue-800 font-medium">
+                          Format: BO{bestOf} (Premier à {requiredWins} victoire{requiredWins > 1 ? 's' : ''}) - Le score sera calculé automatiquement
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">Gagnant</label>
+                      <select
+                        value={matchResult.winnerId}
+                        onChange={(e) => setMatchResult({ ...matchResult, winnerId: e.target.value })}
+                        className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Sélectionner le gagnant</option>
+                        <option value={selectedMatch.team1Id}>{selectedMatch.team1Name}</option>
+                        <option value={selectedMatch.team2Id}>{selectedMatch.team2Name}</option>
+                      </select>
                     </div>
-                  )}
 
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">Gagnant</label>
-                    <select
-                      value={matchResult.winnerId}
-                      onChange={(e) => setMatchResult({ ...matchResult, winnerId: e.target.value })}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Sélectionner le gagnant</option>
-                      <option value={selectedMatch.team1Id}>{selectedMatch.team1Name}</option>
-                      <option value={selectedMatch.team2Id}>{selectedMatch.team2Name}</option>
-                    </select>
-                  </div>
-
-                  {/* Kills par joueur - Équipe 1 */}
-                  <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
-                    <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">
-                      {selectedMatch.team1Name} - Kills par joueur
-                    </h4>
-                    <div className="space-y-1.5 sm:space-y-2">
-                      {matchResult.team1PlayerStats.map((player, index) => (
-                        <div key={player.playerId} className="flex items-center gap-2 sm:gap-3">
-                          <span className="text-xs sm:text-sm text-gray-700 flex-1 truncate">{player.pseudo}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={player.kills}
-                            onChange={(e) => {
-                              const newStats = [...matchResult.team1PlayerStats];
-                              newStats[index].kills = parseInt(e.target.value) || 0;
-                              const totalKills = newStats.reduce((sum, p) => sum + p.kills, 0);
-                              setMatchResult({ ...matchResult, team1PlayerStats: newStats, team1Kills: totalKills });
-                            }}
-                            className="w-16 sm:w-20 bg-white border border-gray-300 text-gray-900 rounded-lg px-2 sm:px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="0"
-                          />
+                    {/* Kills par joueur - Équipe 1 */}
+                    <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                      <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">
+                        {selectedMatch.team1Name} - Kills par joueur
+                      </h4>
+                      <div className="space-y-1.5 sm:space-y-2">
+                        {matchResult.team1PlayerStats.map((player, index) => (
+                          <div key={player.playerId} className="flex items-center gap-2 sm:gap-3">
+                            <span className="text-xs sm:text-sm text-gray-700 flex-1 truncate">{player.pseudo}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={player.kills}
+                              onChange={(e) => {
+                                const newStats = [...matchResult.team1PlayerStats];
+                                newStats[index].kills = parseInt(e.target.value) || 0;
+                                const totalKills = newStats.reduce((sum, p) => sum + p.kills, 0);
+                                setMatchResult({ ...matchResult, team1PlayerStats: newStats, team1Kills: totalKills });
+                              }}
+                              className="w-16 sm:w-20 bg-white border border-gray-300 text-gray-900 rounded-lg px-2 sm:px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="0"
+                            />
+                          </div>
+                        ))}
+                        <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                          <span className="font-semibold text-gray-900 text-sm sm:text-base">Total</span>
+                          <span className="font-bold text-blue-600 text-base sm:text-lg">{matchResult.team1Kills}</span>
                         </div>
-                      ))}
-                      <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
-                        <span className="font-semibold text-gray-900 text-sm sm:text-base">Total</span>
-                        <span className="font-bold text-blue-600 text-base sm:text-lg">{matchResult.team1Kills}</span>
+                      </div>
+                    </div>
+
+                    {/* Kills par joueur - Équipe 2 */}
+                    <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                      <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">
+                        {selectedMatch.team2Name} - Kills par joueur
+                      </h4>
+                      <div className="space-y-1.5 sm:space-y-2">
+                        {matchResult.team2PlayerStats.map((player, index) => (
+                          <div key={player.playerId} className="flex items-center gap-2 sm:gap-3">
+                            <span className="text-xs sm:text-sm text-gray-700 flex-1 truncate">{player.pseudo}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={player.kills}
+                              onChange={(e) => {
+                                const newStats = [...matchResult.team2PlayerStats];
+                                newStats[index].kills = parseInt(e.target.value) || 0;
+                                const totalKills = newStats.reduce((sum, p) => sum + p.kills, 0);
+                                setMatchResult({ ...matchResult, team2PlayerStats: newStats, team2Kills: totalKills });
+                              }}
+                              className="w-16 sm:w-20 bg-white border border-gray-300 text-gray-900 rounded-lg px-2 sm:px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="0"
+                            />
+                          </div>
+                        ))}
+                        <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                          <span className="font-semibold text-gray-900 text-sm sm:text-base">Total</span>
+                          <span className="font-bold text-blue-600 text-base sm:text-lg">{matchResult.team2Kills}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  {/* Kills par joueur - Équipe 2 */}
-                  <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
-                    <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">
-                      {selectedMatch.team2Name} - Kills par joueur
-                    </h4>
-                    <div className="space-y-1.5 sm:space-y-2">
-                      {matchResult.team2PlayerStats.map((player, index) => (
-                        <div key={player.playerId} className="flex items-center gap-2 sm:gap-3">
-                          <span className="text-xs sm:text-sm text-gray-700 flex-1 truncate">{player.pseudo}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={player.kills}
-                            onChange={(e) => {
-                              const newStats = [...matchResult.team2PlayerStats];
-                              newStats[index].kills = parseInt(e.target.value) || 0;
-                              const totalKills = newStats.reduce((sum, p) => sum + p.kills, 0);
-                              setMatchResult({ ...matchResult, team2PlayerStats: newStats, team2Kills: totalKills });
-                            }}
-                            className="w-16 sm:w-20 bg-white border border-gray-300 text-gray-900 rounded-lg px-2 sm:px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="0"
-                          />
-                        </div>
-                      ))}
-                      <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
-                        <span className="font-semibold text-gray-900 text-sm sm:text-base">Total</span>
-                        <span className="font-bold text-blue-600 text-base sm:text-lg">{matchResult.team2Kills}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
             </div>
 
             {/* Footer fixe avec boutons */}
@@ -1347,27 +1347,25 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                 killLeaderboard.entries.map((entry, index) => (
                   <div
                     key={entry.playerId}
-                    className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
-                      index === 0
+                    className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${index === 0
                         ? 'bg-yellow-50 border-yellow-400'
                         : index === 1
-                        ? 'bg-gray-50 border-gray-300'
-                        : index === 2
-                        ? 'bg-orange-50 border-orange-300'
-                        : 'bg-white border-gray-200'
-                    }`}
+                          ? 'bg-gray-50 border-gray-300'
+                          : index === 2
+                            ? 'bg-orange-50 border-orange-300'
+                            : 'bg-white border-gray-200'
+                      }`}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div
-                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
-                          index === 0
+                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${index === 0
                             ? 'bg-yellow-500 text-white'
                             : index === 1
-                            ? 'bg-gray-400 text-white'
-                            : index === 2
-                            ? 'bg-orange-500 text-white'
-                            : 'bg-blue-600 text-white'
-                        }`}
+                              ? 'bg-gray-400 text-white'
+                              : index === 2
+                                ? 'bg-orange-500 text-white'
+                                : 'bg-blue-600 text-white'
+                          }`}
                       >
                         {entry.position}
                       </div>
@@ -1443,56 +1441,54 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                   {(() => {
                     // Utiliser qualifiersPerGroup depuis la config du tournoi
                     const qualifiersPerGroup = tournament.customFormat?.groupStage?.qualifiersPerGroup || 2;
-                    
+
                     return groupStandings.map((team, index) => {
                       const isQualified = index < qualifiersPerGroup;
-                      
+
                       return (
                         <div
                           key={team.teamId}
-                          className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
-                            index === 0
+                          className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${index === 0
                               ? 'bg-yellow-50 border-yellow-400'
                               : isQualified
-                              ? 'bg-green-50 border-green-400'
-                              : 'bg-white border-gray-200'
-                          }`}
+                                ? 'bg-green-50 border-green-400'
+                                : 'bg-white border-gray-200'
+                            }`}
                         >
                           <div className="flex items-center gap-4 flex-1">
                             <div
-                              className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
-                                index === 0
+                              className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${index === 0
                                   ? 'bg-yellow-500 text-white'
                                   : isQualified
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-blue-600 text-white'
-                              }`}
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-blue-600 text-white'
+                                }`}
                             >
                               {index + 1}
                             </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900">{team.teamName}</p>
-                        <p className="text-sm text-gray-600">
-                          {team.wins}V - {team.losses}D
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-blue-600">{team.points}</p>
-                        <p className="text-xs text-gray-500">points</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-semibold text-orange-600">{team.kills}</p>
-                        <p className="text-xs text-gray-500">kills</p>
-                      </div>
-                    </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900">{team.teamName}</p>
+                              <p className="text-sm text-gray-600">
+                                {team.wins}V - {team.losses}D
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-blue-600">{team.points}</p>
+                              <p className="text-xs text-gray-500">points</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-semibold text-orange-600">{team.kills}</p>
+                              <p className="text-xs text-gray-500">kills</p>
+                            </div>
+                          </div>
                         </div>
                       );
                     });
                   })()}
                 </div>
-                
+
                 <div className="mt-4 bg-green-50 border border-green-300 rounded-lg p-3">
                   <p className="text-sm text-green-700">
                     <strong>Qualifiés :</strong> Les {tournament.customFormat?.groupStage?.qualifiersPerGroup || 2} premières équipes (fond vert) se qualifient pour la phase éliminatoire
@@ -1530,12 +1526,12 @@ export default function MatchManagement({ tournamentId, tournament }: MatchManag
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             {/* Contenu scrollable avec fond gris clair admin */}
             <div className="flex-1 overflow-auto p-6 bg-gray-50">
               <EliminationBracketTree rounds={matchesByRound} />
             </div>
-            
+
             {/* Footer - Style admin */}
             <div className="bg-white px-6 py-4 border-t border-gray-200 flex justify-end">
               <button
