@@ -879,26 +879,31 @@ export class MatchService {
     groupNames: string[],
     qualifiersPerGroup: number,
     slotsNeeded: number
-  ): Promise<{ teamId: string; teamName: string; groupName: string; points: number; kills: number }[]> {
-    const allNonQualified: { teamId: string; teamName: string; groupName: string; points: number; kills: number }[] = [];
+  ): Promise<{ teamId: string; teamName: string; groupName: string; points: number; kills: number; rank: number }[]> {
+    const allNonQualified: { teamId: string; teamName: string; groupName: string; points: number; kills: number; rank: number }[] = [];
 
     for (const groupName of groupNames) {
       const standings = await this.getGroupStandings(tournamentId, groupName);
       // Les non-qualifiés sont ceux après la position qualifiersPerGroup
       const nonQualified = standings.slice(qualifiersPerGroup);
-      nonQualified.forEach(team => {
+      nonQualified.forEach((team, index) => {
         allNonQualified.push({
           teamId: team.teamId,
           teamName: team.teamName,
           groupName,
           points: team.points,
-          kills: team.kills
+          kills: team.kills,
+          rank: qualifiersPerGroup + index + 1 // Position réelle dans le groupe (3, 4, ...)
         });
       });
     }
 
-    // Trier tous les non-qualifiés par points (desc) puis kills (desc)
+    // Trier par :
+    // 1. Rang dans le groupe (asc : les 3èmes avant les 4èmes)
+    // 2. Points (desc)
+    // 3. Kills (desc)
     allNonQualified.sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank;
       if (b.points !== a.points) return b.points - a.points;
       return b.kills - a.kills;
     });
